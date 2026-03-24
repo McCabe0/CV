@@ -35,7 +35,9 @@ class GeminiService(
         )
 
         val response = geminiWebClient.post()
-            .uri("/models/gemini-1.5-flash:generateContent?key=$apiKey")
+            .uri("/models/gemini-flash-latest:generateContent")
+            .header("Content-Type", "application/json")
+            .header("x-goog-api-key", apiKey)
             .bodyValue(requestBody)
             .retrieve()
             .bodyToMono(Map::class.java)
