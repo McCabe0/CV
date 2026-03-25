@@ -97,7 +97,7 @@ class JobServiceTest {
     @Test
     fun `matchJobs computes zero overlap and missing skills without keyword bonus`() {
         val request = JobMatchRequest(
-            generatedCvOrProfile = "Experienced in leadership and communication",
+            generatedCvOrProfile = "Experienced in communication and planning",
             profileSkills = listOf("Leadership"),
             jobs = listOf(aiJobs[2])
         )
