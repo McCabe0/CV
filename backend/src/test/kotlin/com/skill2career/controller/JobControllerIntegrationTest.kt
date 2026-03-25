@@ -2,8 +2,8 @@ package com.skill2career.controller
 
 import com.skill2career.service.GeminiService
 import org.junit.jupiter.api.Test
-import org.mockito.Mockito
 import org.mockito.kotlin.any
+import org.mockito.kotlin.whenever
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
@@ -46,10 +46,27 @@ class JobControllerIntegrationTest {
     }
 
     @Test
+    fun `POST jobs search without filters returns full catalog`() {
+        val requestBody = """
+            {
+              "skills": [],
+              "location": null,
+              "roleKeywords": []
+            }
+        """.trimIndent()
+
+        mockMvc.perform(
+            post("/jobs/search")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody)
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.jobs.length()").value(4))
+    }
+
+    @Test
     fun `POST jobs match returns scored matches`() {
-        Mockito.`when`(
-            geminiService.generateMatchReasoning(any(), any(), any(), any())
-        ).thenReturn("Model reasoning")
+        whenever(geminiService.generateMatchReasoning(any(), any(), any(), any())).thenReturn("Model reasoning")
 
         val requestBody = """
             {
@@ -63,8 +80,7 @@ class JobControllerIntegrationTest {
                   "location": "Remote",
                   "description": "Build APIs",
                   "requiredSkills": ["Kotlin", "Spring Boot", "REST", "SQL"],
-                  "roleKeywords": ["backend"],
-                  "source": "internal"
+                  "roleKeywords": ["backend"]
                 }
               ]
             }
@@ -85,14 +101,13 @@ class JobControllerIntegrationTest {
 
     @Test
     fun `GET jobs recommendations returns top ranked jobs`() {
-        Mockito.`when`(
-            geminiService.generateMatchReasoning(any(), any(), any(), any())
-        ).thenReturn("Model reasoning")
+        whenever(geminiService.generateMatchReasoning(any(), any(), any(), any())).thenReturn("Model reasoning")
 
         mockMvc.perform(get("/jobs/recommendations/profile-1"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.matches.length()").value(3))
             .andExpect(jsonPath("$.matches[0].score").isNumber)
             .andExpect(jsonPath("$.matches[0].job.id").isNotEmpty)
+            .andExpect(jsonPath("$.matches[0].score").value(org.hamcrest.Matchers.greaterThanOrEqualTo(0)))
     }
 }
