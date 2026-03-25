@@ -23,6 +23,7 @@ class JobService(
 
     fun matchJobs(request: JobMatchRequest): JobMatchResponse {
         val profileSkills = request.profileSkills.normalizedSet()
+        val profileText = request.generatedCvOrProfile.normalize()
 
         val matches = request.jobs.map { job ->
             val requiredSkillsNormalized = job.requiredSkills.normalizedSet()
@@ -37,18 +38,31 @@ class JobService(
                 ((overlap.size.toDouble() / requiredSkillsNormalized.size) * 100).roundToInt()
             }
 
-            val keywordBonus = if (
-                profileSkills.any { skill ->
-                    request.generatedCvOrProfile.normalize().contains(skill)
+            val keywordCoverage = job.roleKeywords
+                .map { it.normalize() }
+                .filter { it.isNotBlank() }
+                .let { keywords ->
+                    if (keywords.isEmpty()) 0
+                    else ((keywords.count { profileText.contains(it) }.toDouble() / keywords.size) * 100).roundToInt()
+                }
+
+            val titleAlignmentBonus = if (
+                job.title.normalize().split(" ").any { token ->
+                    token.length > 3 && profileText.contains(token)
                 }
             ) {
-                10
+                8
             } else {
                 0
             }
 
-            val score = (overlapPercent * 0.8 + keywordBonus).roundToInt().coerceIn(0, 100)
-            val confidence = (60 + overlapPercent * 0.4).roundToInt().coerceIn(0, 100)
+            val missingPenalty = (missing.size * 6).coerceAtMost(30)
+            val baseScore = (overlapPercent * 0.7 + keywordCoverage * 0.2 + titleAlignmentBonus).roundToInt()
+            val score = (baseScore - missingPenalty).coerceIn(0, 100)
+
+            val confidence = (55 + overlapPercent * 0.35 + keywordCoverage * 0.15 - missingPenalty * 0.25)
+                .roundToInt()
+                .coerceIn(0, 100)
 
             val reasoning = geminiService.generateMatchReasoning(
                 cvOrProfile = request.generatedCvOrProfile,
@@ -65,7 +79,7 @@ class JobService(
                 confidence = confidence,
                 reasoning = reasoning
             )
-        }.sortedByDescending { it.score }
+        }.sortedWith(compareByDescending<JobMatchResult> { it.score }.thenByDescending { it.confidence })
 
         val savedMatches = persistenceService.saveMatchResults(
             profileId = request.profileId,
@@ -113,7 +127,7 @@ class JobService(
             )
         )
 
-        return fullMatchResponse.copy(matches = fullMatchResponse.matches.take(3))
+        return fullMatchResponse.copy(matches = fullMatchResponse.matches.take(6))
     }
 
     private fun String.normalize(): String = trim().lowercase()

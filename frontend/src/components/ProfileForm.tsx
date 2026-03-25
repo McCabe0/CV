@@ -8,6 +8,21 @@ type ProfileFormProps = {
   onSubmit: (profile: Profile) => void
 }
 
+const SAMPLE_PROFILE: Profile = {
+  name: 'Jordan Lee',
+  skills: ['Python', 'SQL', 'Tableau', 'Airflow', 'AWS', 'Machine Learning', 'A/B Testing', 'Data Modeling'],
+  experience:
+    'Data analyst with 5+ years building dashboards, ETL workflows, and predictive models for e-commerce and fintech teams. Led weekly analytics reviews with product and engineering stakeholders.',
+  education: 'B.S. in Computer Science, University of Washington (2019)',
+  targetRole: 'Senior Data Analyst',
+  yearsOfExperience: '5',
+  location: 'Seattle, WA',
+  workAuthorization: 'US Citizen',
+  projects: ['Customer churn prediction model', 'Real-time KPI dashboard migration', 'Experimentation analytics framework'],
+  certifications: ['AWS Certified Cloud Practitioner', 'Google Data Analytics Professional Certificate'],
+  languages: ['English', 'Spanish'],
+}
+
 function splitList(value: string): string[] {
   return value
     .split(',')
@@ -53,9 +68,28 @@ export default function ProfileForm({ initialValue, loading, error, onSubmit }: 
     })
   }
 
+  const applySample = () => {
+    setName(SAMPLE_PROFILE.name)
+    setSkills(joinList(SAMPLE_PROFILE.skills))
+    setExperience(SAMPLE_PROFILE.experience)
+    setEducation(SAMPLE_PROFILE.education)
+    setTargetRole(SAMPLE_PROFILE.targetRole ?? '')
+    setYearsOfExperience(SAMPLE_PROFILE.yearsOfExperience ?? '')
+    setLocation(SAMPLE_PROFILE.location ?? '')
+    setWorkAuthorization(SAMPLE_PROFILE.workAuthorization ?? '')
+    setProjects(joinList(SAMPLE_PROFILE.projects))
+    setCertifications(joinList(SAMPLE_PROFILE.certifications))
+    setLanguages(joinList(SAMPLE_PROFILE.languages))
+  }
+
   return (
     <form onSubmit={handleSubmit} className="card grid">
-      <h2 style={{ margin: 0 }}>Step 1: Build your profile</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+        <h2 style={{ margin: 0 }}>Step 1: Build your profile</h2>
+        <button type="button" onClick={applySample}>
+          Use dummy data
+        </button>
+      </div>
       <p className="muted" style={{ margin: 0 }}>Start with the basics and we’ll generate a CV draft for you.</p>
 
       <div className="grid-2">
