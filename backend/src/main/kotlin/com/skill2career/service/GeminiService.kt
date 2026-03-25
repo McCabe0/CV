@@ -1,5 +1,6 @@
 package com.skill2career.service
 
+import com.skill2career.model.JobItem
 import com.skill2career.model.Profile
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
@@ -12,7 +13,6 @@ class GeminiService(
 ) {
 
     fun generateSummary(profile: Profile): String {
-
         val prompt = """
             Create a professional CV summary for:
 
@@ -24,6 +24,31 @@ class GeminiService(
             Keep it concise and professional.
         """.trimIndent()
 
+        return executePrompt(prompt, "Failed to generate summary")
+    }
+
+    fun generateMatchReasoning(
+        cvOrProfile: String,
+        job: JobItem,
+        overlapPercent: Int,
+        missingSkills: List<String>
+    ): String {
+        val prompt = """
+            Explain job-candidate compatibility in 2 concise sentences.
+            Candidate profile/CV: $cvOrProfile
+            Job title: ${job.title}
+            Job description: ${job.description}
+            Required skills: ${job.requiredSkills.joinToString(", ")}
+            Skill overlap percent: $overlapPercent
+            Missing skills: ${missingSkills.joinToString(", ").ifBlank { "none" }}
+
+            Keep it factual and avoid inventing skills.
+        """.trimIndent()
+
+        return executePrompt(prompt, "Reasoning unavailable")
+    }
+
+    private fun executePrompt(prompt: String, fallback: String): String {
         val requestBody = mapOf(
             "contents" to listOf(
                 mapOf(
@@ -41,6 +66,7 @@ class GeminiService(
             .bodyValue(requestBody)
             .retrieve()
             .bodyToMono(Map::class.java)
+            .onErrorReturn(emptyMap<String, Any>())
             .block()
 
         val candidates = response?.get("candidates") as? List<*>
@@ -49,6 +75,6 @@ class GeminiService(
         val parts = content?.get("parts") as? List<*>
         val textObj = parts?.firstOrNull() as? Map<*, *>
 
-        return textObj?.get("text")?.toString() ?: "Failed to generate summary"
+        return textObj?.get("text")?.toString() ?: fallback
     }
 }
