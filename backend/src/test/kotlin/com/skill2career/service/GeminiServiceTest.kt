@@ -74,6 +74,77 @@ class GeminiServiceTest {
         assertEquals(listOf("Kotlin"), summary.keySkills)
     }
 
+
+    @Test
+    fun `generateSummary parses fenced json payload`() {
+        server.enqueue(
+            MockResponse()
+                .setHeader("Content-Type", "application/json")
+                .setBody(
+                    """
+                    {
+                      "candidates": [
+                        {
+                          "content": {
+                            "parts": [
+                              { "text": "```json\n{\"headline\":\"Platform Engineer\",\"summary\":\"Distributed systems\",\"keySkills\":[\"Kotlin\"],\"experienceBullets\":[\"Led service migration\"],\"educationSection\":\"MS CS\",\"atsKeywords\":[\"Kotlin\"]}\n```" }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                    """.trimIndent()
+                )
+        )
+
+        val summary = geminiService.generateSummary(
+            Profile(
+                name = "Jordan",
+                skills = listOf("Kotlin"),
+                experience = "6 years",
+                education = "MS"
+            )
+        )
+
+        assertEquals("Platform Engineer", summary.headline)
+        assertEquals("Distributed systems", summary.summary)
+    }
+
+    @Test
+    fun `generateSummary returns fallback when candidate text contains no json object`() {
+        server.enqueue(
+            MockResponse()
+                .setHeader("Content-Type", "application/json")
+                .setBody(
+                    """
+                    {
+                      "candidates": [
+                        {
+                          "content": {
+                            "parts": [
+                              { "text": "summary unavailable" }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                    """.trimIndent()
+                )
+        )
+
+        val summary = geminiService.generateSummary(
+            Profile(
+                name = "Taylor",
+                skills = listOf("Spring Boot"),
+                experience = "4 years",
+                education = "BS"
+            )
+        )
+
+        assertEquals("Professional Profile", summary.headline)
+        assertEquals("Failed to generate summary", summary.summary)
+    }
+
     @Test
     fun `generateJobsForSearch parses job list from response`() {
         server.enqueue(
