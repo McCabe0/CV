@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
+import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.atLeastOnce
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
@@ -74,7 +75,7 @@ class JobServiceTest {
                 JobEntity(id = 1L), JobEntity(id = 2L), JobEntity(id = 3L), JobEntity(id = 4L)
             )
         )
-        whenever(persistenceService.saveMatchResults(any(), any(), any())).thenReturn(
+        whenever(persistenceService.saveMatchResults(anyOrNull(), anyOrNull(), any())).thenReturn(
             listOf(JobMatchEntity(id = 10L))
         )
         whenever(persistenceService.getProfile(any())).thenReturn(null)
