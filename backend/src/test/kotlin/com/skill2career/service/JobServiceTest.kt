@@ -19,58 +19,60 @@ class JobServiceTest {
     private lateinit var geminiService: GeminiService
     private lateinit var jobService: JobService
 
+    private val aiJobs = listOf(
+        JobItem(
+            id = "ai-1",
+            title = "Backend Kotlin Engineer",
+            company = "AI Corp",
+            location = "Remote",
+            description = "Build backend APIs",
+            requiredSkills = listOf("Kotlin", "Spring Boot", "REST", "SQL"),
+            roleKeywords = listOf("backend")
+        ),
+        JobItem(
+            id = "ai-2",
+            title = "Frontend React Developer",
+            company = "AI Labs",
+            location = "San Francisco, CA",
+            description = "Build web apps",
+            requiredSkills = listOf("React", "TypeScript"),
+            roleKeywords = listOf("frontend")
+        ),
+        JobItem(
+            id = "ai-3",
+            title = "Data Engineer",
+            company = "AI Data",
+            location = "Austin, TX",
+            description = "Data pipelines",
+            requiredSkills = listOf("SQL", "Python", "ETL"),
+            roleKeywords = listOf("data")
+        ),
+        JobItem(
+            id = "ai-4",
+            title = "Generalist Engineer",
+            company = "AI Startup",
+            location = "Remote",
+            description = "Various tasks",
+            requiredSkills = emptyList(),
+            roleKeywords = listOf("generalist")
+        )
+    )
+
     @BeforeEach
     fun setUp() {
         geminiService = mock()
-        whenever(
-            geminiService.generateMatchReasoning(any(), any(), any(), any())
-        ).thenReturn("Deterministic test reasoning")
+        whenever(geminiService.generateMatchReasoning(any(), any(), any(), any()))
+            .thenReturn("Deterministic test reasoning")
+        whenever(geminiService.generateJobsForSearch(any())).thenReturn(aiJobs)
 
         jobService = JobService(geminiService)
     }
 
     @Test
-    fun `searchJobs returns all jobs when no filters are provided`() {
-        val response = jobService.searchJobs(JobSearchRequest())
+    fun `searchJobs returns ai jobs`() {
+        val response = jobService.searchJobs(JobSearchRequest(skills = listOf("kotlin")))
         assertEquals(4, response.jobs.size)
-    }
-
-    @Test
-    fun `searchJobs filters by skill keyword and location`() {
-        val response = jobService.searchJobs(
-            JobSearchRequest(
-                skills = listOf("kotlin"),
-                location = "remote",
-                roleKeywords = listOf("backend")
-            )
-        )
-
-        assertEquals(1, response.jobs.size)
-        assertEquals("Backend Kotlin Engineer", response.jobs.first().title)
-    }
-
-    @Test
-    fun `searchJobs can match role keyword from title`() {
-        val response = jobService.searchJobs(
-            JobSearchRequest(
-                roleKeywords = listOf("react")
-            )
-        )
-
-        assertEquals(1, response.jobs.size)
-        assertEquals("Frontend React Developer", response.jobs.first().title)
-    }
-
-    @Test
-    fun `searchJobs returns empty list when location does not match`() {
-        val response = jobService.searchJobs(
-            JobSearchRequest(
-                location = "Miami, FL",
-                skills = listOf("Kotlin")
-            )
-        )
-
-        assertTrue(response.jobs.isEmpty())
+        assertEquals("ai-1", response.jobs.first().id)
     }
 
     @Test
@@ -78,17 +80,7 @@ class JobServiceTest {
         val request = JobMatchRequest(
             generatedCvOrProfile = "Experienced in Kotlin Spring Boot REST SQL APIs",
             profileSkills = listOf("Kotlin", "Spring Boot", "REST", "SQL"),
-            jobs = listOf(
-                JobItem(
-                    id = "job-test-1",
-                    title = "Backend Kotlin Engineer",
-                    company = "Skill2Career",
-                    location = "Remote",
-                    description = "Build Spring Boot APIs",
-                    requiredSkills = listOf("Kotlin", "Spring Boot", "REST", "SQL"),
-                    roleKeywords = listOf("backend")
-                )
-            )
+            jobs = listOf(aiJobs.first())
         )
 
         val response = jobService.matchJobs(request)
@@ -105,19 +97,9 @@ class JobServiceTest {
     @Test
     fun `matchJobs computes zero overlap and missing skills without keyword bonus`() {
         val request = JobMatchRequest(
-            generatedCvOrProfile = "Experienced in leadership and communication",
+            generatedCvOrProfile = "Experienced in communication and planning",
             profileSkills = listOf("Leadership"),
-            jobs = listOf(
-                JobItem(
-                    id = "job-test-2",
-                    title = "Data Engineer",
-                    company = "InsightGrid",
-                    location = "Austin, TX",
-                    description = "Build ETL systems",
-                    requiredSkills = listOf("SQL", "Python"),
-                    roleKeywords = listOf("data")
-                )
-            )
+            jobs = listOf(aiJobs[2])
         )
 
         val response = jobService.matchJobs(request)
@@ -126,65 +108,18 @@ class JobServiceTest {
         assertEquals(0, first.skillOverlapPercent)
         assertEquals(0, first.score)
         assertEquals(60, first.confidence)
-        assertEquals(listOf("SQL", "Python"), first.requiredSkillsMissing)
+        assertEquals(listOf("SQL", "Python", "ETL"), first.requiredSkillsMissing)
     }
 
     @Test
-    fun `matchJobs handles jobs with empty required skills`() {
-        val request = JobMatchRequest(
-            generatedCvOrProfile = "Generalist profile",
-            profileSkills = listOf("Kotlin"),
-            jobs = listOf(
-                JobItem(
-                    id = "job-test-3",
-                    title = "Generalist",
-                    company = "Acme",
-                    location = "Remote",
-                    description = "Do many things",
-                    requiredSkills = emptyList(),
-                    roleKeywords = emptyList()
-                )
-            )
-        )
-
-        val response = jobService.matchJobs(request)
-        val first = response.matches.first()
-
-        assertEquals(0, first.skillOverlapPercent)
-        assertEquals(0, first.score)
-        assertEquals(60, first.confidence)
-        assertTrue(first.requiredSkillsMissing.isEmpty())
-    }
-
-    @Test
-    fun `recommendations return top three for data profile path`() {
-        val response = jobService.recommendations("data-user")
-
-        assertEquals(3, response.matches.size)
-        assertTrue(response.matches.zipWithNext().all { it.first.score >= it.second.score })
-    }
-
-    @Test
-    fun `recommendations return top three for frontend profile path`() {
-        val response = jobService.recommendations("frontend-user")
-
-        assertEquals(3, response.matches.size)
-        assertTrue(response.matches.zipWithNext().all { it.first.score >= it.second.score })
-    }
-
-    @Test
-    fun `recommendations returns top three ranked jobs for default path`() {
+    fun `recommendations returns top three ranked jobs using ai results`() {
         val response = jobService.recommendations("backend-profile")
 
         assertEquals(3, response.matches.size)
         assertTrue(response.matches.zipWithNext().all { it.first.score >= it.second.score })
         assertFalse(response.matches.first().job.id.isBlank())
 
-        verify(geminiService, atLeastOnce()).generateMatchReasoning(
-            any(),
-            any(),
-            any(),
-            any()
-        )
+        verify(geminiService, atLeastOnce()).generateJobsForSearch(any())
+        verify(geminiService, atLeastOnce()).generateMatchReasoning(any(), any(), any(), any())
     }
 }

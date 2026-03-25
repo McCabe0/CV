@@ -1,11 +1,13 @@
 package com.skill2career.service
 
 import com.skill2career.model.JobItem
+import com.skill2career.model.JobSearchRequest
 import com.skill2career.model.Profile
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.web.reactive.function.client.WebClient
@@ -68,6 +70,67 @@ class GeminiServiceTest {
         assertEquals("/models/gemini-flash-latest:generateContent", request.path)
         assertEquals("test-api-key", request.getHeader("x-goog-api-key"))
         assertEquals("Generated CV summary", summary)
+    }
+
+    @Test
+    fun `generateJobsForSearch parses job list from response`() {
+        server.enqueue(
+            MockResponse()
+                .setHeader("Content-Type", "application/json")
+                .setBody(
+                    """
+                    {
+                      "candidates": [
+                        {
+                          "content": {
+                            "parts": [
+                              { "text": "[{\"id\":\"ai-1\",\"title\":\"Backend\",\"company\":\"Acme\",\"location\":\"Remote\",\"description\":\"Build\",\"requiredSkills\":[\"Kotlin\"],\"roleKeywords\":[\"backend\"],\"source\":\"ai\"}]" }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                    """.trimIndent()
+                )
+        )
+
+        val jobs = geminiService.generateJobsForSearch(
+            JobSearchRequest(
+                skills = listOf("Kotlin"),
+                location = "Remote",
+                roleKeywords = listOf("backend")
+            )
+        )
+
+        assertEquals(1, jobs.size)
+        assertEquals("ai-1", jobs.first().id)
+    }
+
+    @Test
+    fun `generateJobsForSearch returns empty when response is invalid`() {
+        server.enqueue(
+            MockResponse()
+                .setHeader("Content-Type", "application/json")
+                .setBody(
+                    """
+                    {
+                      "candidates": [
+                        {
+                          "content": {
+                            "parts": [
+                              { "text": "not a json array" }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                    """.trimIndent()
+                )
+        )
+
+        val jobs = geminiService.generateJobsForSearch(JobSearchRequest(skills = listOf("Kotlin")))
+
+        assertTrue(jobs.isEmpty())
     }
 
     @Test

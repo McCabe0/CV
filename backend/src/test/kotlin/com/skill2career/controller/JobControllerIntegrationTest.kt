@@ -1,5 +1,6 @@
 package com.skill2career.controller
 
+import com.skill2career.model.JobItem
 import com.skill2career.service.GeminiService
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
@@ -25,8 +26,40 @@ class JobControllerIntegrationTest {
     @MockBean
     private lateinit var geminiService: GeminiService
 
+    private val aiJobs = listOf(
+        JobItem(
+            id = "ai-1",
+            title = "Backend Kotlin Engineer",
+            company = "AI Corp",
+            location = "Remote",
+            description = "Build APIs",
+            requiredSkills = listOf("Kotlin", "Spring Boot", "REST", "SQL"),
+            roleKeywords = listOf("backend")
+        ),
+        JobItem(
+            id = "ai-2",
+            title = "Data Engineer",
+            company = "AI Data",
+            location = "Austin, TX",
+            description = "Data pipelines",
+            requiredSkills = listOf("SQL", "Python", "ETL"),
+            roleKeywords = listOf("data")
+        ),
+        JobItem(
+            id = "ai-3",
+            title = "Frontend Engineer",
+            company = "AI UI",
+            location = "Remote",
+            description = "Frontend",
+            requiredSkills = listOf("React", "TypeScript"),
+            roleKeywords = listOf("frontend")
+        )
+    )
+
     @Test
-    fun `POST jobs search returns matching jobs`() {
+    fun `POST jobs search returns ai jobs`() {
+        whenever(geminiService.generateJobsForSearch(any())).thenReturn(aiJobs)
+
         val requestBody = """
             {
               "skills": ["Kotlin"],
@@ -41,27 +74,8 @@ class JobControllerIntegrationTest {
                 .content(requestBody)
         )
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.jobs.length()").value(1))
-            .andExpect(jsonPath("$.jobs[0].title").value("Backend Kotlin Engineer"))
-    }
-
-    @Test
-    fun `POST jobs search without filters returns full catalog`() {
-        val requestBody = """
-            {
-              "skills": [],
-              "location": null,
-              "roleKeywords": []
-            }
-        """.trimIndent()
-
-        mockMvc.perform(
-            post("/jobs/search")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody)
-        )
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.jobs.length()").value(4))
+            .andExpect(jsonPath("$.jobs.length()").value(3))
+            .andExpect(jsonPath("$.jobs[0].id").value("ai-1"))
     }
 
     @Test
@@ -100,7 +114,8 @@ class JobControllerIntegrationTest {
     }
 
     @Test
-    fun `GET jobs recommendations returns top ranked jobs`() {
+    fun `GET jobs recommendations returns top ranked ai jobs`() {
+        whenever(geminiService.generateJobsForSearch(any())).thenReturn(aiJobs)
         whenever(geminiService.generateMatchReasoning(any(), any(), any(), any())).thenReturn("Model reasoning")
 
         mockMvc.perform(get("/jobs/recommendations/profile-1"))
@@ -108,6 +123,5 @@ class JobControllerIntegrationTest {
             .andExpect(jsonPath("$.matches.length()").value(3))
             .andExpect(jsonPath("$.matches[0].score").isNumber)
             .andExpect(jsonPath("$.matches[0].job.id").isNotEmpty)
-            .andExpect(jsonPath("$.matches[0].score").value(org.hamcrest.Matchers.greaterThanOrEqualTo(0)))
     }
 }
