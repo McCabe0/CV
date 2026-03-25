@@ -3,15 +3,11 @@ package com.skill2career.service
 import com.skill2career.model.JobItem
 import com.skill2career.model.JobMatchRequest
 import com.skill2career.model.JobSearchRequest
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.mockito.ArgumentMatchers.anyInt
-import org.mockito.ArgumentMatchers.anyList
-import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mockito
+import org.mockito.kotlin.any
 
 class JobServiceTest {
 
@@ -22,7 +18,7 @@ class JobServiceTest {
     fun setUp() {
         geminiService = Mockito.mock(GeminiService::class.java)
         Mockito.`when`(
-            geminiService.generateMatchReasoning(anyString(), Mockito.any(JobItem::class.java), anyInt(), anyList())
+            geminiService.generateMatchReasoning(any(), any(), any(), any())
         ).thenReturn("Deterministic test reasoning")
 
         jobService = JobService(geminiService)
@@ -80,10 +76,10 @@ class JobServiceTest {
         assertFalse(response.matches.first().job.id.isBlank())
 
         Mockito.verify(geminiService, Mockito.atLeastOnce()).generateMatchReasoning(
-            anyString(),
-            Mockito.any(JobItem::class.java),
-            anyInt(),
-            anyList()
+            any(),
+            any(),
+            any(),
+            any()
         )
     }
 }

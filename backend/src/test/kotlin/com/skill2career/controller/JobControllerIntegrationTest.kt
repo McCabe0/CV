@@ -1,12 +1,9 @@
 package com.skill2career.controller
 
-import com.skill2career.model.JobItem
 import com.skill2career.service.GeminiService
 import org.junit.jupiter.api.Test
-import org.mockito.ArgumentMatchers.anyInt
-import org.mockito.ArgumentMatchers.anyList
-import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mockito
+import org.mockito.kotlin.any
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
@@ -51,7 +48,7 @@ class JobControllerIntegrationTest {
     @Test
     fun `POST jobs match returns scored matches`() {
         Mockito.`when`(
-            geminiService.generateMatchReasoning(anyString(), Mockito.any(JobItem::class.java), anyInt(), anyList())
+            geminiService.generateMatchReasoning(any(), any(), any(), any())
         ).thenReturn("Model reasoning")
 
         val requestBody = """
@@ -89,7 +86,7 @@ class JobControllerIntegrationTest {
     @Test
     fun `GET jobs recommendations returns top ranked jobs`() {
         Mockito.`when`(
-            geminiService.generateMatchReasoning(anyString(), Mockito.any(JobItem::class.java), anyInt(), anyList())
+            geminiService.generateMatchReasoning(any(), any(), any(), any())
         ).thenReturn("Model reasoning")
 
         mockMvc.perform(get("/jobs/recommendations/profile-1"))
