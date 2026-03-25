@@ -5,6 +5,7 @@ import com.skill2career.model.JobMatchRequest
 import com.skill2career.model.JobSearchRequest
 import com.skill2career.entity.JobEntity
 import com.skill2career.entity.JobMatchEntity
+import com.skill2career.entity.UserProfileEntity
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -85,8 +86,19 @@ class JobServiceTest {
     fun `searchJobs returns ai jobs`() {
         val response = jobService.searchJobs(JobSearchRequest(skills = listOf("kotlin")))
         assertEquals(4, response.jobs.size)
+        assertEquals(1L, response.searchId)
         assertEquals(4, response.savedJobIds.size)
         assertEquals("ai-1", response.jobs.first().id)
+    }
+
+    @Test
+    fun `searchJobs returns fallback search id when nothing persisted`() {
+        whenever(persistenceService.saveSearchedJobs(any())).thenReturn(emptyList())
+
+        val response = jobService.searchJobs(JobSearchRequest(skills = listOf("kotlin")))
+
+        assertEquals(-1L, response.searchId)
+        assertTrue(response.savedJobIds.isEmpty())
     }
 
     @Test
@@ -136,5 +148,26 @@ class JobServiceTest {
 
         verify(geminiService, atLeastOnce()).generateJobsForSearch(any())
         verify(geminiService, atLeastOnce()).generateMatchReasoning(any(), any(), any(), any())
+    }
+
+    @Test
+    fun `recommendations uses persisted profile skills when available`() {
+        whenever(persistenceService.getProfile(9L)).thenReturn(
+            UserProfileEntity(id = 9L, skills = "Go||Kubernetes||Docker")
+        )
+
+        val response = jobService.recommendations(9L)
+
+        assertEquals(3, response.matches.size)
+        assertEquals(9L, response.profileId)
+    }
+
+    @Test
+    fun `recommendations uses alternate fallback branches`() {
+        val id2 = jobService.recommendations(2L)
+        val id3 = jobService.recommendations(3L)
+
+        assertEquals(3, id2.matches.size)
+        assertEquals(3, id3.matches.size)
     }
 }
