@@ -8,5 +8,6 @@ data class JobItem(
     val description: String,
     val requiredSkills: List<String> = emptyList(),
     val roleKeywords: List<String> = emptyList(),
-    val source: String = "internal"
+    val source: String = "internal",
+    val url: String? = null
 )
