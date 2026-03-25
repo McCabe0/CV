@@ -10,12 +10,15 @@ import org.springframework.stereotype.Service
 
 @Service
 class JobService(
-    private val geminiService: GeminiService
+    private val geminiService: GeminiService,
+    private val persistenceService: PersistenceService
 ) {
 
     fun searchJobs(request: JobSearchRequest): JobSearchResponse {
         val aiJobs = geminiService.generateJobsForSearch(request)
-        return JobSearchResponse(jobs = aiJobs)
+        val savedJobs = persistenceService.saveSearchedJobs(aiJobs)
+        val searchId = savedJobs.firstOrNull()?.id ?: -1L
+        return JobSearchResponse(searchId = searchId, savedJobIds = savedJobs.mapNotNull { it.id }, jobs = aiJobs)
     }
 
     fun matchJobs(request: JobMatchRequest): JobMatchResponse {
@@ -64,13 +67,25 @@ class JobService(
             )
         }.sortedByDescending { it.score }
 
-        return JobMatchResponse(matches = matches)
+        val savedMatches = persistenceService.saveMatchResults(
+            profileId = request.profileId,
+            cvId = request.cvId,
+            matches = matches
+        )
+
+        return JobMatchResponse(
+            profileId = request.profileId,
+            cvId = request.cvId,
+            matchIds = savedMatches.mapNotNull { it.id },
+            matches = matches
+        )
     }
 
-    fun recommendations(profileId: String): JobMatchResponse {
-        val derivedSkills = when (profileId.lowercase().firstOrNull()) {
-            'd' -> listOf("SQL", "Python", "ETL")
-            'f' -> listOf("React", "TypeScript", "CSS")
+    fun recommendations(profileId: Long): JobMatchResponse {
+        val profile = persistenceService.getProfile(profileId)
+        val derivedSkills = profile?.skills?.split("||")?.filter { it.isNotBlank() } ?: when (profileId % 3) {
+            1L -> listOf("SQL", "Python", "ETL")
+            2L -> listOf("React", "TypeScript", "CSS")
             else -> listOf("Kotlin", "Spring Boot", "REST")
         }
 
@@ -86,6 +101,7 @@ class JobService(
 
         val fullMatchResponse = matchJobs(
             JobMatchRequest(
+                profileId = profileId,
                 generatedCvOrProfile = syntheticProfile,
                 profileSkills = derivedSkills,
                 jobs = aiJobs

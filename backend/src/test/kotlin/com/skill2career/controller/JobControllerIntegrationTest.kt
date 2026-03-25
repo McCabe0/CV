@@ -2,6 +2,7 @@ package com.skill2career.controller
 
 import com.skill2career.model.JobItem
 import com.skill2career.service.GeminiService
+import com.skill2career.service.PersistenceService
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
@@ -25,6 +26,8 @@ class JobControllerIntegrationTest {
 
     @MockBean
     private lateinit var geminiService: GeminiService
+    @MockBean
+    private lateinit var persistenceService: PersistenceService
 
     private val aiJobs = listOf(
         JobItem(
@@ -59,6 +62,7 @@ class JobControllerIntegrationTest {
     @Test
     fun `POST jobs search returns ai jobs`() {
         whenever(geminiService.generateJobsForSearch(any())).thenReturn(aiJobs)
+        whenever(persistenceService.saveSearchedJobs(any())).thenReturn(emptyList())
 
         val requestBody = """
             {
@@ -74,6 +78,7 @@ class JobControllerIntegrationTest {
                 .content(requestBody)
         )
             .andExpect(status().isOk)
+            .andExpect(jsonPath("$.searchId").value(-1))
             .andExpect(jsonPath("$.jobs.length()").value(3))
             .andExpect(jsonPath("$.jobs[0].id").value("ai-1"))
     }
@@ -81,6 +86,7 @@ class JobControllerIntegrationTest {
     @Test
     fun `POST jobs match returns scored matches`() {
         whenever(geminiService.generateMatchReasoning(any(), any(), any(), any())).thenReturn("Model reasoning")
+        whenever(persistenceService.saveMatchResults(any(), any(), any())).thenReturn(emptyList())
 
         val requestBody = """
             {
@@ -117,8 +123,11 @@ class JobControllerIntegrationTest {
     fun `GET jobs recommendations returns top ranked ai jobs`() {
         whenever(geminiService.generateJobsForSearch(any())).thenReturn(aiJobs)
         whenever(geminiService.generateMatchReasoning(any(), any(), any(), any())).thenReturn("Model reasoning")
+        whenever(persistenceService.saveSearchedJobs(any())).thenReturn(emptyList())
+        whenever(persistenceService.saveMatchResults(any(), any(), any())).thenReturn(emptyList())
+        whenever(persistenceService.getProfile(any())).thenReturn(null)
 
-        mockMvc.perform(get("/jobs/recommendations/profile-1"))
+        mockMvc.perform(get("/jobs/recommendations/1"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.matches.length()").value(3))
             .andExpect(jsonPath("$.matches[0].score").isNumber)

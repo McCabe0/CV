@@ -3,6 +3,8 @@ package com.skill2career.service
 import com.skill2career.model.JobItem
 import com.skill2career.model.JobMatchRequest
 import com.skill2career.model.JobSearchRequest
+import com.skill2career.entity.JobEntity
+import com.skill2career.entity.JobMatchEntity
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -17,6 +19,7 @@ import org.mockito.kotlin.whenever
 class JobServiceTest {
 
     private lateinit var geminiService: GeminiService
+    private lateinit var persistenceService: PersistenceService
     private lateinit var jobService: JobService
 
     private val aiJobs = listOf(
@@ -61,17 +64,28 @@ class JobServiceTest {
     @BeforeEach
     fun setUp() {
         geminiService = mock()
+        persistenceService = mock()
         whenever(geminiService.generateMatchReasoning(any(), any(), any(), any()))
             .thenReturn("Deterministic test reasoning")
         whenever(geminiService.generateJobsForSearch(any())).thenReturn(aiJobs)
+        whenever(persistenceService.saveSearchedJobs(any())).thenReturn(
+            listOf(
+                JobEntity(id = 1L), JobEntity(id = 2L), JobEntity(id = 3L), JobEntity(id = 4L)
+            )
+        )
+        whenever(persistenceService.saveMatchResults(any(), any(), any())).thenReturn(
+            listOf(JobMatchEntity(id = 10L))
+        )
+        whenever(persistenceService.getProfile(any())).thenReturn(null)
 
-        jobService = JobService(geminiService)
+        jobService = JobService(geminiService, persistenceService)
     }
 
     @Test
     fun `searchJobs returns ai jobs`() {
         val response = jobService.searchJobs(JobSearchRequest(skills = listOf("kotlin")))
         assertEquals(4, response.jobs.size)
+        assertEquals(4, response.savedJobIds.size)
         assertEquals("ai-1", response.jobs.first().id)
     }
 
@@ -92,6 +106,7 @@ class JobServiceTest {
         assertEquals(100, first.confidence)
         assertTrue(first.requiredSkillsMissing.isEmpty())
         assertEquals("Deterministic test reasoning", first.reasoning)
+        assertEquals(listOf(10L), response.matchIds)
     }
 
     @Test
@@ -113,7 +128,7 @@ class JobServiceTest {
 
     @Test
     fun `recommendations returns top three ranked jobs using ai results`() {
-        val response = jobService.recommendations("backend-profile")
+        val response = jobService.recommendations(1L)
 
         assertEquals(3, response.matches.size)
         assertTrue(response.matches.zipWithNext().all { it.first.score >= it.second.score })
