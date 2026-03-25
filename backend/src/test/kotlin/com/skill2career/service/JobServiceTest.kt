@@ -8,10 +8,11 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.mockito.ArgumentMatchers.anyInt
-import org.mockito.ArgumentMatchers.anyList
-import org.mockito.ArgumentMatchers.anyString
-import org.mockito.Mockito
+import org.mockito.kotlin.any
+import org.mockito.kotlin.atLeastOnce
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
 
 class JobServiceTest {
 
@@ -20,9 +21,9 @@ class JobServiceTest {
 
     @BeforeEach
     fun setUp() {
-        geminiService = Mockito.mock(GeminiService::class.java)
-        Mockito.`when`(
-            geminiService.generateMatchReasoning(anyString(), Mockito.any(JobItem::class.java), anyInt(), anyList())
+        geminiService = mock()
+        whenever(
+            geminiService.generateMatchReasoning(any(), any(), any(), any())
         ).thenReturn("Deterministic test reasoning")
 
         jobService = JobService(geminiService)
@@ -179,11 +180,11 @@ class JobServiceTest {
         assertTrue(response.matches.zipWithNext().all { it.first.score >= it.second.score })
         assertFalse(response.matches.first().job.id.isBlank())
 
-        Mockito.verify(geminiService, Mockito.atLeastOnce()).generateMatchReasoning(
-            anyString(),
-            Mockito.any(JobItem::class.java),
-            anyInt(),
-            anyList()
+        verify(geminiService, atLeastOnce()).generateMatchReasoning(
+            any(),
+            any(),
+            any(),
+            any()
         )
     }
 }
