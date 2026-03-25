@@ -27,6 +27,6 @@ class JobController(
         jobService.matchJobs(request)
 
     @GetMapping("/recommendations/{profileId}")
-    fun recommendations(@PathVariable profileId: String): JobMatchResponse =
+    fun recommendations(@PathVariable profileId: Long): JobMatchResponse =
         jobService.recommendations(profileId)
 }
