@@ -1,10 +1,11 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import {
   generateCv,
   getRecommendations,
   matchJobs,
   searchJobs,
   type CvResponse,
+  type JobItem,
   type JobMatchResult,
   type Profile,
 } from './api'
@@ -13,6 +14,17 @@ import JobMatchList from './components/JobMatchList'
 import ProfileForm from './components/ProfileForm'
 
 type Step = 'profile' | 'cv' | 'results'
+
+function deriveFallbackKeywords(profile: Profile, cv: CvResponse): string[] {
+  const fromTargetRole = profile.targetRole ? [profile.targetRole] : []
+  const fromHeadline = cv.headline
+    .split(' ')
+    .map((word) => word.replace(/[^a-zA-Z]/g, '').trim())
+    .filter((word) => word.length > 3)
+    .slice(0, 3)
+
+  return [...new Set([...fromTargetRole, ...fromHeadline])]
+}
 
 export default function App() {
   const [step, setStep] = useState<Step>('profile')
@@ -28,6 +40,8 @@ export default function App() {
   const [cvError, setCvError] = useState<string | null>(null)
   const [resultsLoading, setResultsLoading] = useState(false)
   const [resultsError, setResultsError] = useState<string | null>(null)
+
+  const stepIndex = useMemo(() => (step === 'profile' ? 0 : step === 'cv' ? 1 : 2), [step])
 
   const handleProfileSubmit = async (profilePayload: Profile) => {
     setProfileLoading(true)
@@ -48,6 +62,18 @@ export default function App() {
     }
   }
 
+  const fetchMatches = async (jobs: JobItem[], currentCv: CvResponse, currentProfile: Profile) => {
+    const cvText = [currentCv.headline, currentCv.summary, ...currentCv.experienceBullets, currentCv.educationSection].join('\n')
+
+    return matchJobs({
+      profileId: profileId ?? undefined,
+      cvId: cvId ?? undefined,
+      generatedCvOrProfile: cvText,
+      profileSkills: currentCv.keySkills.length > 0 ? currentCv.keySkills : currentProfile.skills,
+      jobs,
+    })
+  }
+
   const handleFindMatches = async (criteria: { roleKeywords: string[]; location?: string }) => {
     if (!cv || !profile) {
       setCvError('CV and profile data are required before matching jobs.')
@@ -59,27 +85,42 @@ export default function App() {
     setMatches([])
 
     try {
-      const searchResponse = await searchJobs({
+      const fallbackKeywords = deriveFallbackKeywords(profile, cv)
+
+      // First pass: user criteria + CV skills.
+      let searchResponse = await searchJobs({
         skills: cv.keySkills.length > 0 ? cv.keySkills : profile.skills,
         location: criteria.location,
-        roleKeywords: criteria.roleKeywords,
+        roleKeywords: criteria.roleKeywords.length > 0 ? criteria.roleKeywords : fallbackKeywords,
       })
 
+      // Second pass: broaden criteria if nothing was found.
       if (searchResponse.jobs.length === 0) {
+        searchResponse = await searchJobs({
+          skills: profile.skills.slice(0, 8),
+          roleKeywords: fallbackKeywords,
+          location: undefined,
+        })
+      }
+
+      if (searchResponse.jobs.length > 0) {
+        const matchResponse = await fetchMatches(searchResponse.jobs, cv, profile)
+        setMatches(matchResponse.matches)
         setStep('results')
         return
       }
 
-      const cvText = [cv.headline, cv.summary, ...cv.experienceBullets, cv.educationSection].join('\n')
-      const matchResponse = await matchJobs({
-        profileId: profileId ?? undefined,
-        cvId: cvId ?? undefined,
-        generatedCvOrProfile: cvText,
-        profileSkills: cv.keySkills,
-        jobs: searchResponse.jobs,
-      })
+      // Final fallback: recommendations endpoint (works well when search is sparse).
+      if (profileId) {
+        const recommendationResponse = await getRecommendations(profileId)
+        setMatches(recommendationResponse.matches)
+        setResultsError(
+          recommendationResponse.matches.length === 0
+            ? 'No direct search hits. We also tried recommendations but found no matches yet.'
+            : 'No direct search hits. Showing recommended matches instead.',
+        )
+      }
 
-      setMatches(matchResponse.matches)
       setStep('results')
     } catch (error) {
       setResultsError(error instanceof Error ? error.message : 'Failed to find job matches')
@@ -109,11 +150,23 @@ export default function App() {
   }
 
   return (
-    <div style={{ padding: 20, fontFamily: 'sans-serif', display: 'grid', gap: 16 }}>
-      <h1>Skill2Career</h1>
-      <p>
-        Profile ID: <strong>{profileId ?? 'N/A'}</strong> | CV ID: <strong>{cvId ?? 'N/A'}</strong>
-      </p>
+    <div className="app-shell">
+      <div className="card">
+        <h1 style={{ margin: '0 0 4px' }}>Skill2Career</h1>
+        <p className="muted" style={{ margin: 0 }}>
+          Build your profile, generate your CV, and get matched jobs in one flow.
+        </p>
+
+        <div className="stepper">
+          <span className={`step-pill ${stepIndex >= 0 ? 'active' : ''}`}>1. Profile</span>
+          <span className={`step-pill ${stepIndex >= 1 ? 'active' : ''}`}>2. CV</span>
+          <span className={`step-pill ${stepIndex >= 2 ? 'active' : ''}`}>3. Job Matches</span>
+        </div>
+
+        <p className="muted" style={{ margin: 0 }}>
+          Profile ID: <strong>{profileId ?? 'N/A'}</strong> | CV ID: <strong>{cvId ?? 'N/A'}</strong>
+        </p>
+      </div>
 
       {step === 'profile' ? (
         <ProfileForm initialValue={profile ?? undefined} loading={profileLoading} error={profileError} onSubmit={handleProfileSubmit} />
@@ -131,8 +184,8 @@ export default function App() {
       ) : null}
 
       {step === 'results' ? (
-        <>
-          <button type="button" onClick={handleRefreshRecommendations} disabled={resultsLoading || !profileId} style={{ width: 'fit-content' }}>
+        <div className="grid">
+          <button type="button" onClick={handleRefreshRecommendations} disabled={resultsLoading || !profileId}>
             {resultsLoading ? 'Refreshing...' : 'Refresh recommendations'}
           </button>
           <JobMatchList
@@ -141,7 +194,7 @@ export default function App() {
             error={resultsError}
             onBackToCv={() => setStep('cv')}
           />
-        </>
+        </div>
       ) : null}
     </div>
   )

@@ -34,15 +34,15 @@ export default function CvPreview({
   const [jobLocation, setJobLocation] = useState('')
 
   if (loading) {
-    return <p>Loading CV preview...</p>
+    return <p className="muted">Loading CV preview...</p>
   }
 
   if (error) {
-    return <p style={{ color: 'crimson' }}>{error}</p>
+    return <p className="error">{error}</p>
   }
 
   if (!cv) {
-    return <p>No CV available yet. Complete Step 1 to generate your CV.</p>
+    return <p className="muted">No CV available yet. Complete Step 1 to generate your CV.</p>
   }
 
   const update = (patch: Partial<CvResponse>) => {
@@ -58,15 +58,26 @@ export default function CvPreview({
   }
 
   return (
-    <section style={{ display: 'grid', gap: 12 }}>
-      <h2>Step 2: CV preview/editor</h2>
+    <section className="card grid">
+      <h2 style={{ margin: 0 }}>Step 2: Tune your CV and search criteria</h2>
+      <p className="muted" style={{ margin: 0 }}>Edit anything below before running job matching.</p>
+
       <input value={cv.headline} onChange={(e) => update({ headline: e.target.value })} />
       <textarea value={cv.summary} onChange={(e) => update({ summary: e.target.value })} rows={5} />
-      <input
-        value={cv.keySkills.join(', ')}
-        onChange={(e) => update({ keySkills: splitCsv(e.target.value) })}
-        placeholder="Key skills"
-      />
+
+      <div className="grid-2">
+        <input
+          value={cv.keySkills.join(', ')}
+          onChange={(e) => update({ keySkills: splitCsv(e.target.value) })}
+          placeholder="Key skills"
+        />
+        <input
+          value={cv.atsKeywords.join(', ')}
+          onChange={(e) => update({ atsKeywords: splitCsv(e.target.value) })}
+          placeholder="ATS keywords"
+        />
+      </div>
+
       <textarea
         value={cv.experienceBullets.join('\n')}
         onChange={(e) =>
@@ -79,25 +90,20 @@ export default function CvPreview({
         }
         rows={5}
       />
-      <textarea
-        value={cv.educationSection}
-        onChange={(e) => update({ educationSection: e.target.value })}
-        rows={3}
-      />
-      <input
-        value={cv.atsKeywords.join(', ')}
-        onChange={(e) => update({ atsKeywords: splitCsv(e.target.value) })}
-        placeholder="ATS keywords"
-      />
 
-      <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 8 }}>
-        <h3>Job Search Criteria</h3>
-        <input
-          value={jobKeywords}
-          onChange={(e) => setJobKeywords(e.target.value)}
-          placeholder="Role keywords (comma-separated)"
-        />
-        <input value={jobLocation} onChange={(e) => setJobLocation(e.target.value)} placeholder="Job location" />
+      <textarea value={cv.educationSection} onChange={(e) => update({ educationSection: e.target.value })} rows={3} />
+
+      <form onSubmit={handleSubmit} className="card grid" style={{ background: '#f8fafc' }}>
+        <h3 style={{ margin: 0 }}>Job Search Criteria</h3>
+        <div className="grid-2">
+          <input
+            value={jobKeywords}
+            onChange={(e) => setJobKeywords(e.target.value)}
+            placeholder="Role keywords (comma-separated)"
+          />
+          <input value={jobLocation} onChange={(e) => setJobLocation(e.target.value)} placeholder="Job location" />
+        </div>
+
         <button type="submit" disabled={continueLoading}>
           {continueLoading ? 'Searching and matching...' : 'Find Job Matches'}
         </button>

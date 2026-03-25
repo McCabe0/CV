@@ -11,19 +11,19 @@ type JobMatchListProps = {
 
 export default function JobMatchList({ matches, loading, error, onBackToCv }: JobMatchListProps) {
   return (
-    <section style={{ display: 'grid', gap: 12 }}>
-      <h2>Step 3: Job match results</h2>
-      <button onClick={onBackToCv} type="button" style={{ width: 'fit-content' }}>
-        Back to CV editor
-      </button>
+    <section className="card grid">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+        <h2 style={{ margin: 0 }}>Step 3: Job match results</h2>
+        <button onClick={onBackToCv} type="button">
+          Back to CV editor
+        </button>
+      </div>
 
-      {loading ? <p>Loading job matches...</p> : null}
-      {error ? <p style={{ color: 'crimson' }}>{error}</p> : null}
-      {!loading && !error && matches.length === 0 ? <p>No job matches found. Try broader criteria.</p> : null}
+      {loading ? <p className="muted">Loading job matches...</p> : null}
+      {error ? <p className="error">{error}</p> : null}
+      {!loading && !error && matches.length === 0 ? <p className="muted">No matches yet. Try broader keywords or refresh recommendations.</p> : null}
 
-      {!loading && !error
-        ? matches.map((match) => <JobCard key={`${match.job.id}-${match.job.company}`} match={match} />)
-        : null}
+      {!loading && !error ? matches.map((match) => <JobCard key={`${match.job.id}-${match.job.company}`} match={match} />) : null}
     </section>
   )
 }

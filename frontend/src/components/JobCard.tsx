@@ -5,23 +5,41 @@ type JobCardProps = {
   match: JobMatchResult
 }
 
+function getJobLink(match: JobMatchResult): string {
+  if (match.job.url) return match.job.url
+  if (match.job.source?.startsWith('http')) return match.job.source
+
+  const query = encodeURIComponent(`${match.job.title} ${match.job.company} ${match.job.location} jobs`)
+  return `https://www.google.com/search?q=${query}`
+}
+
 export default function JobCard({ match }: JobCardProps) {
   const { job } = match
 
   return (
-    <article style={{ border: '1px solid #ddd', borderRadius: 8, padding: 12, display: 'grid', gap: 6 }}>
-      <h3 style={{ margin: 0 }}>{job.title}</h3>
-      <p style={{ margin: 0 }}>
+    <article className="job-card grid">
+      <h3>{job.title}</h3>
+      <p>
         <strong>{job.company}</strong> — {job.location}
       </p>
-      <p style={{ margin: 0 }}>Score: {match.score}% | Confidence: {match.confidence}%</p>
-      <p style={{ margin: 0 }}>Skill overlap: {match.skillOverlapPercent}%</p>
+
+      <div className="chips">
+        <span className="chip">Score: {match.score}%</span>
+        <span className="chip">Confidence: {match.confidence}%</span>
+        <span className="chip">Overlap: {match.skillOverlapPercent}%</span>
+      </div>
+
+      <p>{match.reasoning}</p>
+
       {match.requiredSkillsMissing.length > 0 ? (
-        <p style={{ margin: 0 }}>Missing skills: {match.requiredSkillsMissing.join(', ')}</p>
+        <p className="muted">Missing skills: {match.requiredSkillsMissing.join(', ')}</p>
       ) : (
-        <p style={{ margin: 0 }}>Missing skills: none</p>
+        <p className="muted">Missing skills: none 🎉</p>
       )}
-      <p style={{ margin: 0 }}>{match.reasoning}</p>
+
+      <a className="link-btn" href={getJobLink(match)} target="_blank" rel="noreferrer">
+        View job posting ↗
+      </a>
     </article>
   )
 }

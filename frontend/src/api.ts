@@ -51,6 +51,7 @@ export type JobItem = {
   requiredSkills: string[]
   roleKeywords: string[]
   source: string
+  url?: string
 }
 
 export type JobSearchCriteria = {

@@ -33,7 +33,7 @@ export default function ProfileForm({ initialValue, loading, error, onSubmit }: 
   const [languages, setLanguages] = useState(joinList(initialValue?.languages))
 
   const isValid = useMemo(() => {
-    return name.trim() && splitList(skills).length > 0 && experience.trim() && education.trim()
+    return Boolean(name.trim() && splitList(skills).length > 0 && experience.trim() && education.trim())
   }, [education, experience, name, skills])
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -54,50 +54,41 @@ export default function ProfileForm({ initialValue, loading, error, onSubmit }: 
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 12, maxWidth: 900 }}>
-      <h2>Step 1: Profile form</h2>
-      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" required />
+    <form onSubmit={handleSubmit} className="card grid">
+      <h2 style={{ margin: 0 }}>Step 1: Build your profile</h2>
+      <p className="muted" style={{ margin: 0 }}>Start with the basics and we’ll generate a CV draft for you.</p>
+
+      <div className="grid-2">
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" required />
+        <input value={targetRole} onChange={(e) => setTargetRole(e.target.value)} placeholder="Target role (e.g. Data Analyst)" />
+      </div>
+
       <input
         value={skills}
         onChange={(e) => setSkills(e.target.value)}
         placeholder="Skills (comma-separated)"
         required
       />
-      <textarea
-        value={experience}
-        onChange={(e) => setExperience(e.target.value)}
-        placeholder="Experience"
-        required
-        rows={4}
-      />
-      <textarea
-        value={education}
-        onChange={(e) => setEducation(e.target.value)}
-        placeholder="Education"
-        required
-        rows={2}
-      />
-      <input value={targetRole} onChange={(e) => setTargetRole(e.target.value)} placeholder="Target role" />
-      <input
-        value={yearsOfExperience}
-        onChange={(e) => setYearsOfExperience(e.target.value)}
-        placeholder="Years of experience"
-      />
-      <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Location" />
-      <input
-        value={workAuthorization}
-        onChange={(e) => setWorkAuthorization(e.target.value)}
-        placeholder="Work authorization"
-      />
-      <input value={projects} onChange={(e) => setProjects(e.target.value)} placeholder="Projects (comma-separated)" />
-      <input
-        value={certifications}
-        onChange={(e) => setCertifications(e.target.value)}
-        placeholder="Certifications (comma-separated)"
-      />
-      <input value={languages} onChange={(e) => setLanguages(e.target.value)} placeholder="Languages (comma-separated)" />
 
-      {error ? <p style={{ color: 'crimson' }}>{error}</p> : null}
+      <div className="grid-2">
+        <input value={yearsOfExperience} onChange={(e) => setYearsOfExperience(e.target.value)} placeholder="Years of experience" />
+        <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Location" />
+      </div>
+
+      <textarea value={experience} onChange={(e) => setExperience(e.target.value)} placeholder="Experience" required rows={4} />
+      <textarea value={education} onChange={(e) => setEducation(e.target.value)} placeholder="Education" required rows={2} />
+
+      <div className="grid-2">
+        <input value={workAuthorization} onChange={(e) => setWorkAuthorization(e.target.value)} placeholder="Work authorization" />
+        <input value={languages} onChange={(e) => setLanguages(e.target.value)} placeholder="Languages (comma-separated)" />
+      </div>
+
+      <div className="grid-2">
+        <input value={projects} onChange={(e) => setProjects(e.target.value)} placeholder="Projects (comma-separated)" />
+        <input value={certifications} onChange={(e) => setCertifications(e.target.value)} placeholder="Certifications (comma-separated)" />
+      </div>
+
+      {error ? <p className="error">{error}</p> : null}
 
       <button type="submit" disabled={!isValid || loading}>
         {loading ? 'Generating CV...' : 'Generate CV'}
