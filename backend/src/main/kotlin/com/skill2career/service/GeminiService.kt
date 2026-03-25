@@ -2,6 +2,7 @@ package com.skill2career.service
 
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.skill2career.model.CvSummarySections
 import com.skill2career.model.JobItem
 import com.skill2career.model.JobSearchRequest
 import com.skill2career.model.Profile
@@ -17,19 +18,43 @@ class GeminiService(
 
     private val objectMapper = jacksonObjectMapper()
 
-    fun generateSummary(profile: Profile): String {
+    fun generateSummary(profile: Profile): CvSummarySections {
         val prompt = """
-            Create a professional CV summary for:
+            Create structured CV content for this candidate.
 
             Name: ${profile.name}
+            Target role: ${profile.targetRole ?: "Not specified"}
             Skills: ${profile.skills.joinToString(", ")}
             Experience: ${profile.experience}
+            Years of experience: ${profile.yearsOfExperience ?: "Not specified"}
+            Location: ${profile.location ?: "Not specified"}
+            Work authorization: ${profile.workAuthorization ?: "Not specified"}
+            Projects: ${profile.projects.joinToString(", ").ifBlank { "Not specified" }}
+            Certifications: ${profile.certifications.joinToString(", ").ifBlank { "Not specified" }}
+            Languages: ${profile.languages.joinToString(", ").ifBlank { "Not specified" }}
             Education: ${profile.education}
 
-            Keep it concise and professional.
+            Return ONLY valid JSON with fields:
+            headline (string),
+            summary (string),
+            keySkills (array of strings),
+            experienceBullets (array of strings, 3-5 bullets),
+            educationSection (string),
+            atsKeywords (array of strings).
+            Do not include markdown or commentary.
         """.trimIndent()
 
-        return executePrompt(prompt, "Failed to generate summary")
+        val raw = executePrompt(prompt, "{}")
+        val parsed = parseSummaryJson(raw)
+
+        return parsed ?: CvSummarySections(
+            headline = "Professional Profile",
+            summary = "Failed to generate summary",
+            keySkills = profile.skills,
+            experienceBullets = listOf(profile.experience),
+            educationSection = profile.education,
+            atsKeywords = profile.skills
+        )
     }
 
     fun generateJobsForSearch(request: JobSearchRequest): List<JobItem> {
@@ -73,6 +98,18 @@ class GeminiService(
         """.trimIndent()
 
         return executePrompt(prompt, "Reasoning unavailable")
+    }
+
+    private fun parseSummaryJson(raw: String): CvSummarySections? {
+        val withoutFence = raw.replace("```json", "").replace("```", "").trim()
+        val start = withoutFence.indexOf('{')
+        val end = withoutFence.lastIndexOf('}')
+        if (start < 0 || end <= start) return null
+
+        val json = withoutFence.substring(start, end + 1)
+        return runCatching {
+            objectMapper.readValue(json, CvSummarySections::class.java)
+        }.getOrNull()
     }
 
     private fun extractJsonArray(raw: String): String {

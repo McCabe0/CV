@@ -79,9 +79,12 @@ class PersistenceServiceTest {
             CvResponse(
                 profileId = 2L,
                 cvId = -1L,
+                headline = "Backend Engineer",
                 summary = "Summary",
-                skills = listOf("Kotlin", "SQL"),
-                experience = "3y"
+                keySkills = listOf("Kotlin", "SQL"),
+                experienceBullets = listOf("Built APIs"),
+                educationSection = "BS",
+                atsKeywords = listOf("Kotlin", "SQL")
             )
         )
 
@@ -96,7 +99,7 @@ class PersistenceServiceTest {
         assertThrows(IllegalArgumentException::class.java) {
             persistenceService.saveGeneratedCvResponse(
                 3L,
-                CvResponse(3L, -1, "Summary", listOf("Kotlin"), "3y")
+                CvResponse(3L, -1, "Backend Engineer", "Summary", listOf("Kotlin"), listOf("Built APIs"), "BS", listOf("Kotlin"))
             )
         }
     }

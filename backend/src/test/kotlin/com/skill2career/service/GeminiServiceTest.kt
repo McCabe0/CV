@@ -35,7 +35,7 @@ class GeminiServiceTest {
     }
 
     @Test
-    fun `generateSummary returns generated text from Gemini response`() {
+    fun `generateSummary returns structured sections from Gemini response`() {
         server.enqueue(
             MockResponse()
                 .setHeader("Content-Type", "application/json")
@@ -46,7 +46,7 @@ class GeminiServiceTest {
                         {
                           "content": {
                             "parts": [
-                              { "text": "Generated CV summary" }
+                              { "text": "{\"headline\":\"Backend Engineer\",\"summary\":\"Built APIs\",\"keySkills\":[\"Kotlin\"],\"experienceBullets\":[\"3 years backend development\"],\"educationSection\":\"BS Computer Science\",\"atsKeywords\":[\"Kotlin\",\"Spring Boot\"]}" }
                             ]
                           }
                         }
@@ -69,7 +69,9 @@ class GeminiServiceTest {
         assertEquals("POST", request.method)
         assertEquals("/models/gemini-flash-latest:generateContent", request.path)
         assertEquals("test-api-key", request.getHeader("x-goog-api-key"))
-        assertEquals("Generated CV summary", summary)
+        assertEquals("Backend Engineer", summary.headline)
+        assertEquals("Built APIs", summary.summary)
+        assertEquals(listOf("Kotlin"), summary.keySkills)
     }
 
     @Test
@@ -176,6 +178,7 @@ class GeminiServiceTest {
             )
         )
 
-        assertEquals("Failed to generate summary", summary)
+        assertEquals("Professional Profile", summary.headline)
+        assertEquals("Failed to generate summary", summary.summary)
     }
 }

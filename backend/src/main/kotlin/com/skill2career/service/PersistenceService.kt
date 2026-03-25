@@ -41,9 +41,9 @@ class PersistenceService(
         return generatedCvRepository.save(
             GeneratedCvEntity(
                 profile = profile,
-                summary = cvResponse.summary,
-                skills = cvResponse.skills.pack(),
-                experience = cvResponse.experience
+                summary = listOf(cvResponse.headline, cvResponse.summary).filter { it.isNotBlank() }.joinToString("\n"),
+                skills = cvResponse.keySkills.pack(),
+                experience = cvResponse.experienceBullets.pack()
             )
         )
     }
