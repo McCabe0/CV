@@ -1,13 +1,14 @@
 package com.skill2career.service
 
-import com.skill2career.model.JobItem
-import com.skill2career.model.JobMatchRequest
-import com.skill2career.model.JobSearchRequest
 import com.skill2career.entity.JobEntity
 import com.skill2career.entity.JobMatchEntity
 import com.skill2career.entity.UserProfileEntity
+import com.skill2career.model.JobItem
+import com.skill2career.model.JobMatchRequest
+import com.skill2career.model.JobSearchRequest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -78,7 +79,9 @@ class JobServiceTest {
         whenever(persistenceService.saveMatchResults(anyOrNull(), anyOrNull(), any())).thenReturn(
             listOf(JobMatchEntity(id = 10L))
         )
-        whenever(persistenceService.getProfile(any())).thenReturn(null)
+        whenever(persistenceService.getProfile(any())).thenReturn(
+            UserProfileEntity(id = 1L, skills = "Kotlin||Spring Boot||REST")
+        )
 
         jobService = JobService(geminiService, persistenceService)
     }
@@ -140,7 +143,11 @@ class JobServiceTest {
     }
 
     @Test
-    fun `recommendations returns top three ranked jobs using ai results`() {
+    fun `recommendations returns top three ranked jobs using profile skills`() {
+        whenever(persistenceService.getProfile(1L)).thenReturn(
+            UserProfileEntity(id = 1L, skills = "Kotlin||Spring Boot||REST")
+        )
+
         val response = jobService.recommendations(1L)
 
         assertEquals(3, response.matches.size)
@@ -152,23 +159,26 @@ class JobServiceTest {
     }
 
     @Test
-    fun `recommendations uses persisted profile skills when available`() {
-        whenever(persistenceService.getProfile(9L)).thenReturn(
-            UserProfileEntity(id = 9L, skills = "Go||Kubernetes||Docker")
-        )
+    fun `recommendations throws when profile does not exist`() {
+        whenever(persistenceService.getProfile(404L)).thenReturn(null)
 
-        val response = jobService.recommendations(9L)
+        val ex = assertThrows(IllegalArgumentException::class.java) {
+            jobService.recommendations(404L)
+        }
 
-        assertEquals(3, response.matches.size)
-        assertEquals(9L, response.profileId)
+        assertEquals("Profile not found: 404", ex.message)
     }
 
     @Test
-    fun `recommendations uses alternate fallback branches`() {
-        val id2 = jobService.recommendations(2L)
-        val id3 = jobService.recommendations(3L)
+    fun `recommendations throws when profile skills are empty`() {
+        whenever(persistenceService.getProfile(12L)).thenReturn(
+            UserProfileEntity(id = 12L, skills = " || ")
+        )
 
-        assertEquals(3, id2.matches.size)
-        assertEquals(3, id3.matches.size)
+        val ex = assertThrows(IllegalArgumentException::class.java) {
+            jobService.recommendations(12L)
+        }
+
+        assertEquals("Profile has no skills: 12", ex.message)
     }
 }

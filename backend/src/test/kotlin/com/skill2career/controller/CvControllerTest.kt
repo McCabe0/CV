@@ -2,6 +2,7 @@ package com.skill2career.controller
 
 import com.skill2career.entity.GeneratedCvEntity
 import com.skill2career.entity.UserProfileEntity
+import com.skill2career.model.CvSummarySections
 import com.skill2career.model.GenerateCvRequest
 import com.skill2career.model.Profile
 import com.skill2career.service.GeminiService
@@ -60,10 +61,18 @@ class CvControllerTest {
             experience = "3 years",
             education = "BS"
         )
+        val sections = CvSummarySections(
+            headline = "Backend Engineer",
+            summary = "Generated summary",
+            keySkills = listOf("Kotlin", "Spring Boot"),
+            experienceBullets = listOf("Built APIs", "Improved performance"),
+            educationSection = "BS",
+            atsKeywords = listOf("Kotlin", "REST")
+        )
 
         whenever(persistenceService.getProfile(42L)).thenReturn(profileEntity)
         whenever(persistenceService.toProfile(profileEntity)).thenReturn(profile)
-        whenever(geminiService.generateSummary(profile)).thenReturn("Generated summary")
+        whenever(geminiService.generateSummary(profile)).thenReturn(sections)
         whenever(persistenceService.saveGeneratedCvResponse(any(), any())).thenReturn(
             GeneratedCvEntity(id = 99L)
         )
@@ -72,9 +81,9 @@ class CvControllerTest {
 
         assertEquals(42L, response.profileId)
         assertEquals(99L, response.cvId)
+        assertEquals("Backend Engineer", response.headline)
         assertEquals("Generated summary", response.summary)
-        assertEquals(listOf("Kotlin", "Spring Boot"), response.skills)
-        assertEquals("3 years", response.experience)
+        assertEquals(listOf("Kotlin", "Spring Boot"), response.keySkills)
     }
 
     @Test

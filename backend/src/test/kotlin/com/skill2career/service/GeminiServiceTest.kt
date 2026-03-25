@@ -35,7 +35,7 @@ class GeminiServiceTest {
     }
 
     @Test
-    fun `generateSummary returns generated text from Gemini response`() {
+    fun `generateSummary returns structured sections from Gemini response`() {
         server.enqueue(
             MockResponse()
                 .setHeader("Content-Type", "application/json")
@@ -46,7 +46,7 @@ class GeminiServiceTest {
                         {
                           "content": {
                             "parts": [
-                              { "text": "Generated CV summary" }
+                              { "text": "{\"headline\":\"Backend Engineer\",\"summary\":\"Built APIs\",\"keySkills\":[\"Kotlin\"],\"experienceBullets\":[\"3 years backend development\"],\"educationSection\":\"BS Computer Science\",\"atsKeywords\":[\"Kotlin\",\"Spring Boot\"]}" }
                             ]
                           }
                         }
@@ -69,7 +69,80 @@ class GeminiServiceTest {
         assertEquals("POST", request.method)
         assertEquals("/models/gemini-flash-latest:generateContent", request.path)
         assertEquals("test-api-key", request.getHeader("x-goog-api-key"))
-        assertEquals("Generated CV summary", summary)
+        assertEquals("Backend Engineer", summary.headline)
+        assertEquals("Built APIs", summary.summary)
+        assertEquals(listOf("Kotlin"), summary.keySkills)
+    }
+
+
+    @Test
+    fun `generateSummary parses fenced json payload`() {
+        server.enqueue(
+            MockResponse()
+                .setHeader("Content-Type", "application/json")
+                .setBody(
+                    """
+                    {
+                      "candidates": [
+                        {
+                          "content": {
+                            "parts": [
+                              { "text": "```json\n{\"headline\":\"Platform Engineer\",\"summary\":\"Distributed systems\",\"keySkills\":[\"Kotlin\"],\"experienceBullets\":[\"Led service migration\"],\"educationSection\":\"MS CS\",\"atsKeywords\":[\"Kotlin\"]}\n```" }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                    """.trimIndent()
+                )
+        )
+
+        val summary = geminiService.generateSummary(
+            Profile(
+                name = "Jordan",
+                skills = listOf("Kotlin"),
+                experience = "6 years",
+                education = "MS"
+            )
+        )
+
+        assertEquals("Platform Engineer", summary.headline)
+        assertEquals("Distributed systems", summary.summary)
+    }
+
+    @Test
+    fun `generateSummary returns fallback when candidate text contains no json object`() {
+        server.enqueue(
+            MockResponse()
+                .setHeader("Content-Type", "application/json")
+                .setBody(
+                    """
+                    {
+                      "candidates": [
+                        {
+                          "content": {
+                            "parts": [
+                              { "text": "summary unavailable" }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                    """.trimIndent()
+                )
+        )
+
+        val summary = geminiService.generateSummary(
+            Profile(
+                name = "Taylor",
+                skills = listOf("Spring Boot"),
+                experience = "4 years",
+                education = "BS"
+            )
+        )
+
+        assertEquals("Professional Profile", summary.headline)
+        assertEquals("Failed to generate summary", summary.summary)
     }
 
     @Test
@@ -176,6 +249,7 @@ class GeminiServiceTest {
             )
         )
 
-        assertEquals("Failed to generate summary", summary)
+        assertEquals("Professional Profile", summary.headline)
+        assertEquals("Failed to generate summary", summary.summary)
     }
 }

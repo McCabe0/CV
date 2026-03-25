@@ -1,5 +1,6 @@
 package com.skill2career.controller
 
+import com.skill2career.entity.UserProfileEntity
 import com.skill2career.model.JobItem
 import com.skill2career.service.GeminiService
 import com.skill2career.service.PersistenceService
@@ -125,12 +126,22 @@ class JobControllerIntegrationTest {
         whenever(geminiService.generateMatchReasoning(any(), any(), any(), any())).thenReturn("Model reasoning")
         whenever(persistenceService.saveSearchedJobs(any())).thenReturn(emptyList())
         whenever(persistenceService.saveMatchResults(any(), any(), any())).thenReturn(emptyList())
-        whenever(persistenceService.getProfile(any())).thenReturn(null)
+        whenever(persistenceService.getProfile(any())).thenReturn(UserProfileEntity(id = 1L, skills = "Kotlin||Spring Boot||REST"))
 
         mockMvc.perform(get("/jobs/recommendations/1"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.matches.length()").value(3))
             .andExpect(jsonPath("$.matches[0].score").isNumber)
             .andExpect(jsonPath("$.matches[0].job.id").isNotEmpty)
+    }
+
+    @Test
+    fun `GET jobs recommendations returns 404 when profile is missing`() {
+        whenever(persistenceService.getProfile(999L)).thenReturn(null)
+
+        mockMvc.perform(get("/jobs/recommendations/999"))
+            .andExpect(status().isNotFound)
+            .andExpect(jsonPath("$.error").value("Resource not found"))
+            .andExpect(jsonPath("$.message").value("Profile not found: 999"))
     }
 }

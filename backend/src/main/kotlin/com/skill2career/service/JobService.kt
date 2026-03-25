@@ -83,10 +83,15 @@ class JobService(
 
     fun recommendations(profileId: Long): JobMatchResponse {
         val profile = persistenceService.getProfile(profileId)
-        val derivedSkills = profile?.skills?.split("||")?.filter { it.isNotBlank() } ?: when (profileId % 3) {
-            1L -> listOf("SQL", "Python", "ETL")
-            2L -> listOf("React", "TypeScript", "CSS")
-            else -> listOf("Kotlin", "Spring Boot", "REST")
+            ?: throw IllegalArgumentException("Profile not found: $profileId")
+
+        val derivedSkills = profile.skills
+            .split("||")
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+
+        if (derivedSkills.isEmpty()) {
+            throw IllegalArgumentException("Profile has no skills: $profileId")
         }
 
         val syntheticProfile = "Profile($profileId) with skills: ${derivedSkills.joinToString(", ")}"

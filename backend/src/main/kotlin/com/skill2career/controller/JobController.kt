@@ -5,6 +5,7 @@ import com.skill2career.model.JobMatchResponse
 import com.skill2career.model.JobSearchRequest
 import com.skill2career.model.JobSearchResponse
 import com.skill2career.service.JobService
+import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -19,11 +20,11 @@ class JobController(
 ) {
 
     @PostMapping("/search")
-    fun searchJobs(@RequestBody request: JobSearchRequest): JobSearchResponse =
+    fun searchJobs(@Valid @RequestBody request: JobSearchRequest): JobSearchResponse =
         jobService.searchJobs(request)
 
     @PostMapping("/match")
-    fun matchJobs(@RequestBody request: JobMatchRequest): JobMatchResponse =
+    fun matchJobs(@Valid @RequestBody request: JobMatchRequest): JobMatchResponse =
         jobService.matchJobs(request)
 
     @GetMapping("/recommendations/{profileId}")

@@ -1,8 +1,6 @@
 package com.skill2career.model
 
-data class CvResponse(
-    val profileId: Long,
-    val cvId: Long,
+data class CvSummarySections(
     val headline: String,
     val summary: String,
     val keySkills: List<String>,
