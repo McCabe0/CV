@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react'
+import React, { FormEvent, useState } from 'react'
 import type { CvResponse } from '../api'
 
 type JobCriteria = {

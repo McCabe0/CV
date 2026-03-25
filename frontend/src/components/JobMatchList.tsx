@@ -1,3 +1,4 @@
+import React from 'react'
 import type { JobMatchResult } from '../api'
 import JobCard from './JobCard'
 

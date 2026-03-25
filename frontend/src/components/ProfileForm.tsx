@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from 'react'
+import React, { FormEvent, useMemo, useState } from 'react'
 import type { Profile } from '../api'
 
 type ProfileFormProps = {
