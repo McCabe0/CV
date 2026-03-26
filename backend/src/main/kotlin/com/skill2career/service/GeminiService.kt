@@ -7,6 +7,7 @@ import com.skill2career.model.JobItem
 import com.skill2career.model.JobSearchRequest
 import com.skill2career.model.Profile
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
@@ -20,6 +21,12 @@ class GeminiService(
 
     private val objectMapper = jacksonObjectMapper()
     private val logger = LoggerFactory.getLogger(GeminiService::class.java)
+
+    private data class CachedResponse(val value: String, val expiresAtMillis: Long)
+    private val promptCache = ConcurrentHashMap<String, CachedResponse>()
+    private val successCacheTtlMillis = 10 * 60 * 1000L
+    private val errorCacheTtlMillis = 30 * 1000L
+    private val maxCacheEntries = 500
 
     fun generateSummary(profile: Profile): CvSummarySections {
         val prompt = """
@@ -213,7 +220,31 @@ class GeminiService(
         }
     }
 
+    private fun getCacheKey(prompt: String, fallback: String): String =
+        "${prompt.hashCode()}|${fallback.hashCode()}"
+
+    private fun getCachedValue(key: String): String? {
+        val now = System.currentTimeMillis()
+        val cached = promptCache[key] ?: return null
+        if (cached.expiresAtMillis < now) {
+            promptCache.remove(key)
+            return null
+        }
+        return cached.value
+    }
+
+    private fun putCachedValue(key: String, value: String, ttlMillis: Long) {
+        if (promptCache.size >= maxCacheEntries) {
+            val firstKey = promptCache.keys.firstOrNull()
+            if (firstKey != null) promptCache.remove(firstKey)
+        }
+        promptCache[key] = CachedResponse(value = value, expiresAtMillis = System.currentTimeMillis() + ttlMillis)
+    }
+
     private fun executePrompt(prompt: String, fallback: String): String {
+        val cacheKey = getCacheKey(prompt, fallback)
+        getCachedValue(cacheKey)?.let { return it }
+
         val requestBody = mapOf(
             "contents" to listOf(
                 mapOf(
@@ -226,7 +257,7 @@ class GeminiService(
                 "temperature" to 0.3,
                 "topP" to 0.9,
                 "topK" to 40,
-                "maxOutputTokens" to 2048
+                "maxOutputTokens" to 1024
             )
         )
 
@@ -250,10 +281,14 @@ class GeminiService(
             val parts = content?.get("parts") as? List<*>
             val textObj = parts?.firstOrNull() as? Map<*, *>
 
-            textObj?.get("text")?.toString() ?: fallback
+            val value = textObj?.get("text")?.toString() ?: fallback
+            putCachedValue(cacheKey, value, successCacheTtlMillis)
+            value
         } catch (error: Exception) {
             logger.warn("Gemini call failed: ${error.message}")
-            "$fallback | Gemini unavailable (${error.message?.take(180) ?: "unknown error"})"
+            val degraded = "$fallback | Gemini unavailable (${error.message?.take(180) ?: "unknown error"})"
+            putCachedValue(cacheKey, degraded, errorCacheTtlMillis)
+            degraded
         }
     }
 }
