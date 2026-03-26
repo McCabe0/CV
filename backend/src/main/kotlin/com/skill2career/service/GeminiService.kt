@@ -6,6 +6,9 @@ import com.skill2career.model.CvSummarySections
 import com.skill2career.model.JobItem
 import com.skill2career.model.JobSearchRequest
 import com.skill2career.model.Profile
+import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClient
@@ -17,6 +20,13 @@ class GeminiService(
 ) {
 
     private val objectMapper = jacksonObjectMapper()
+    private val logger = LoggerFactory.getLogger(GeminiService::class.java)
+
+    private data class CachedResponse(val value: String, val expiresAtMillis: Long)
+    private val promptCache = ConcurrentHashMap<String, CachedResponse>()
+    private val successCacheTtlMillis = 10 * 60 * 1000L
+    private val errorCacheTtlMillis = 30 * 1000L
+    private val maxCacheEntries = 500
 
     fun generateSummary(profile: Profile): CvSummarySections {
         val prompt = """
@@ -49,7 +59,7 @@ class GeminiService(
 
         return parsed ?: CvSummarySections(
             headline = "Professional Profile",
-            summary = "Failed to generate summary",
+            summary = if (raw.contains("Gemini unavailable")) raw else "Failed to generate summary",
             keySkills = profile.skills,
             experienceBullets = listOf(profile.experience),
             educationSection = profile.education,
@@ -58,25 +68,47 @@ class GeminiService(
     }
 
     fun generateJobsForSearch(request: JobSearchRequest): List<JobItem> {
-        val prompt = """
-            Find current job opportunities that match this search profile.
+        val skillsText = request.skills.joinToString(", ").ifBlank { "Not specified" }
+        val roleKeywordsText = request.roleKeywords.joinToString(", ").ifBlank { "Not specified" }
 
-            Skills: ${request.skills.joinToString(", ").ifBlank { "Not specified" }}
-            Location: ${request.location ?: "Any"}
-            Role keywords: ${request.roleKeywords.joinToString(", ").ifBlank { "Not specified" }}
+        val prompt = """
+            You are a job search engine assistant.
+            Generate realistic, currently-open roles that best match this profile.
+
+            Candidate skills: $skillsText
+            Preferred location: ${request.location ?: "Any / remote-friendly"}
+            Role keywords: $roleKeywordsText
+
+            Rules:
+            - Return between 8 and 12 jobs.
+            - Prioritize strong skill overlap first.
+            - Include a mix of remote + location-relevant jobs when possible.
+            - description must be 1-2 concise sentences.
+            - requiredSkills should be 4-8 concrete skills.
+            - roleKeywords should be concise and relevant.
+            - source should be a recognizable board name (LinkedIn, Indeed, Greenhouse, Lever, company-careers).
+            - url should be a direct job link when possible; otherwise use a searchable board URL.
 
             Return ONLY valid JSON as an array of objects with fields:
-            id, title, company, location, description, requiredSkills (array), roleKeywords (array), source.
+            id, title, company, location, description, requiredSkills (array), roleKeywords (array), source, url.
             Do not include markdown or commentary.
-            Return up to 10 jobs.
         """.trimIndent()
 
         val raw = executePrompt(prompt, "[]")
         val json = extractJsonArray(raw)
 
-        return runCatching {
+        val parsed = runCatching {
             objectMapper.readValue(json, object : TypeReference<List<JobItem>>() {})
         }.getOrDefault(emptyList())
+
+        val normalized = parsed
+            .map { normalizeJobItem(it, request) }
+            .filter { it.title.isNotBlank() && it.company.isNotBlank() }
+            .distinctBy { listOf(it.title.lowercase(), it.company.lowercase(), it.location.lowercase()).joinToString("|") }
+
+        if (normalized.isNotEmpty()) return normalized
+
+        return fallbackJobsFromRequest(request)
     }
 
     fun generateMatchReasoning(
@@ -98,6 +130,70 @@ class GeminiService(
         """.trimIndent()
 
         return executePrompt(prompt, "Reasoning unavailable")
+    }
+
+    private fun normalizeJobItem(job: JobItem, request: JobSearchRequest): JobItem {
+        val normalizedSkills = job.requiredSkills
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .ifEmpty { request.skills.take(6) }
+
+        val normalizedKeywords = job.roleKeywords
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .ifEmpty { request.roleKeywords.take(6) }
+
+        val normalizedTitle = job.title.ifBlank { request.roleKeywords.firstOrNull() ?: "Software Engineer" }
+        val normalizedCompany = job.company.ifBlank { "Confidential Company" }
+
+        val generatedId = if (job.id.isBlank()) UUID.randomUUID().toString() else job.id
+        val generatedLocation = job.location.ifBlank { request.location ?: "Remote" }
+
+        val generatedUrl = when {
+            !job.url.isNullOrBlank() -> job.url
+            job.source.startsWith("http") -> job.source
+            else -> {
+                val query = listOf(normalizedTitle, normalizedCompany, generatedLocation, "job")
+                    .joinToString(" ")
+                "https://www.google.com/search?q=${query.replace(" ", "+")}"
+            }
+        }
+
+        return job.copy(
+            id = generatedId,
+            title = normalizedTitle,
+            company = normalizedCompany,
+            location = generatedLocation,
+            description = job.description.ifBlank { "Role aligned with the candidate's profile and required skill set." },
+            requiredSkills = normalizedSkills,
+            roleKeywords = normalizedKeywords,
+            source = job.source.ifBlank { "company-careers" },
+            url = generatedUrl
+        )
+    }
+
+    private fun fallbackJobsFromRequest(request: JobSearchRequest): List<JobItem> {
+        val baseSkills = request.skills.takeIf { it.isNotEmpty() } ?: listOf("Communication", "Problem Solving")
+        val baseKeywords = request.roleKeywords.takeIf { it.isNotEmpty() } ?: listOf("Engineer", "Analyst")
+        val location = request.location ?: "Remote"
+
+        return baseKeywords.take(6).mapIndexed { index, keyword ->
+            val title = "$keyword ${if (index % 2 == 0) "Specialist" else "Engineer"}"
+            val company = "Hiring Company ${index + 1}"
+            val query = listOf(title, company, location, "jobs").joinToString("+")
+
+            JobItem(
+                id = "fallback-${index + 1}",
+                title = title,
+                company = company,
+                location = location,
+                description = "Potentially relevant opportunity generated from your profile while live search results were sparse.",
+                requiredSkills = baseSkills.take(6),
+                roleKeywords = baseKeywords,
+                source = "fallback-search",
+                url = "https://www.google.com/search?q=$query"
+            )
+        }
     }
 
     private fun parseSummaryJson(raw: String): CvSummarySections? {
@@ -124,7 +220,31 @@ class GeminiService(
         }
     }
 
+    private fun getCacheKey(prompt: String, fallback: String): String =
+        "${prompt.hashCode()}|${fallback.hashCode()}"
+
+    private fun getCachedValue(key: String): String? {
+        val now = System.currentTimeMillis()
+        val cached = promptCache[key] ?: return null
+        if (cached.expiresAtMillis < now) {
+            promptCache.remove(key)
+            return null
+        }
+        return cached.value
+    }
+
+    private fun putCachedValue(key: String, value: String, ttlMillis: Long) {
+        if (promptCache.size >= maxCacheEntries) {
+            val firstKey = promptCache.keys.firstOrNull()
+            if (firstKey != null) promptCache.remove(firstKey)
+        }
+        promptCache[key] = CachedResponse(value = value, expiresAtMillis = System.currentTimeMillis() + ttlMillis)
+    }
+
     private fun executePrompt(prompt: String, fallback: String): String {
+        val cacheKey = getCacheKey(prompt, fallback)
+        getCachedValue(cacheKey)?.let { return it }
+
         val requestBody = mapOf(
             "contents" to listOf(
                 mapOf(
@@ -132,25 +252,43 @@ class GeminiService(
                         mapOf("text" to prompt)
                     )
                 )
+            ),
+            "generationConfig" to mapOf(
+                "temperature" to 0.3,
+                "topP" to 0.9,
+                "topK" to 40,
+                "maxOutputTokens" to 1024
             )
         )
 
-        val response = geminiWebClient.post()
-            .uri("/models/gemini-flash-latest:generateContent")
-            .header("Content-Type", "application/json")
-            .header("x-goog-api-key", apiKey)
-            .bodyValue(requestBody)
-            .retrieve()
-            .bodyToMono(Map::class.java)
-            .onErrorReturn(emptyMap<String, Any>())
-            .block()
+        return try {
+            val response = geminiWebClient.post()
+                .uri("/models/gemini-flash-latest:generateContent")
+                .header("Content-Type", "application/json")
+                .header("x-goog-api-key", apiKey)
+                .bodyValue(requestBody)
+                .retrieve()
+                .onStatus({ status -> status.isError }) { clientResponse ->
+                    clientResponse.bodyToMono(String::class.java)
+                        .map { body -> RuntimeException("Gemini API ${clientResponse.statusCode().value()}: $body") }
+                }
+                .bodyToMono(Map::class.java)
+                .block()
 
-        val candidates = response?.get("candidates") as? List<*>
-        val first = candidates?.firstOrNull() as? Map<*, *>
-        val content = first?.get("content") as? Map<*, *>
-        val parts = content?.get("parts") as? List<*>
-        val textObj = parts?.firstOrNull() as? Map<*, *>
+            val candidates = response?.get("candidates") as? List<*>
+            val first = candidates?.firstOrNull() as? Map<*, *>
+            val content = first?.get("content") as? Map<*, *>
+            val parts = content?.get("parts") as? List<*>
+            val textObj = parts?.firstOrNull() as? Map<*, *>
 
-        return textObj?.get("text")?.toString() ?: fallback
+            val value = textObj?.get("text")?.toString() ?: fallback
+            putCachedValue(cacheKey, value, successCacheTtlMillis)
+            value
+        } catch (error: Exception) {
+            logger.warn("Gemini call failed: ${error.message}")
+            val degraded = "$fallback | Gemini unavailable (${error.message?.take(180) ?: "unknown error"})"
+            putCachedValue(cacheKey, degraded, errorCacheTtlMillis)
+            degraded
+        }
     }
 }

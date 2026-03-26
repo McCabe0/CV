@@ -23,8 +23,9 @@ class JobService(
 
     fun matchJobs(request: JobMatchRequest): JobMatchResponse {
         val profileSkills = request.profileSkills.normalizedSet()
+        val profileText = request.generatedCvOrProfile.normalize()
 
-        val matches = request.jobs.map { job ->
+        val initialMatches = request.jobs.map { job ->
             val requiredSkillsNormalized = job.requiredSkills.normalizedSet()
             val overlap = requiredSkillsNormalized.intersect(profileSkills)
             val missing = job.requiredSkills.filter { required ->
@@ -37,25 +38,31 @@ class JobService(
                 ((overlap.size.toDouble() / requiredSkillsNormalized.size) * 100).roundToInt()
             }
 
-            val keywordBonus = if (
-                profileSkills.any { skill ->
-                    request.generatedCvOrProfile.normalize().contains(skill)
+            val keywordCoverage = job.roleKeywords
+                .map { it.normalize() }
+                .filter { it.isNotBlank() }
+                .let { keywords ->
+                    if (keywords.isEmpty()) 0
+                    else ((keywords.count { profileText.contains(it) }.toDouble() / keywords.size) * 100).roundToInt()
+                }
+
+            val titleAlignmentBonus = if (
+                job.title.normalize().split(" ").any { token ->
+                    token.length > 3 && profileText.contains(token)
                 }
             ) {
-                10
+                8
             } else {
                 0
             }
 
-            val score = (overlapPercent * 0.8 + keywordBonus).roundToInt().coerceIn(0, 100)
-            val confidence = (60 + overlapPercent * 0.4).roundToInt().coerceIn(0, 100)
+            val missingPenalty = (missing.size * 6).coerceAtMost(30)
+            val baseScore = (overlapPercent * 0.7 + keywordCoverage * 0.2 + titleAlignmentBonus).roundToInt()
+            val score = (baseScore - missingPenalty).coerceIn(0, 100)
 
-            val reasoning = geminiService.generateMatchReasoning(
-                cvOrProfile = request.generatedCvOrProfile,
-                job = job,
-                overlapPercent = overlapPercent,
-                missingSkills = missing
-            )
+            val confidence = (55 + overlapPercent * 0.35 + keywordCoverage * 0.15 - missingPenalty * 0.25)
+                .roundToInt()
+                .coerceIn(0, 100)
 
             JobMatchResult(
                 job = job,
@@ -63,9 +70,28 @@ class JobService(
                 skillOverlapPercent = overlapPercent,
                 requiredSkillsMissing = missing,
                 confidence = confidence,
-                reasoning = reasoning
+                reasoning = "Reasoning not requested"
             )
-        }.sortedByDescending { it.score }
+        }.sortedWith(compareByDescending<JobMatchResult> { it.score }.thenByDescending { it.confidence })
+
+        val matches = if (!request.includeReasoning) {
+            initialMatches
+        } else {
+            val limit = request.reasoningLimit.coerceAtMost(initialMatches.size)
+            initialMatches.mapIndexed { index, match ->
+                if (index >= limit) {
+                    match
+                } else {
+                    val reasoning = geminiService.generateMatchReasoning(
+                        cvOrProfile = request.generatedCvOrProfile,
+                        job = match.job,
+                        overlapPercent = match.skillOverlapPercent,
+                        missingSkills = match.requiredSkillsMissing
+                    )
+                    match.copy(reasoning = reasoning)
+                }
+            }
+        }
 
         val savedMatches = persistenceService.saveMatchResults(
             profileId = request.profileId,
@@ -109,11 +135,12 @@ class JobService(
                 profileId = profileId,
                 generatedCvOrProfile = syntheticProfile,
                 profileSkills = derivedSkills,
-                jobs = aiJobs
+                jobs = aiJobs,
+                includeReasoning = false
             )
         )
 
-        return fullMatchResponse.copy(matches = fullMatchResponse.matches.take(3))
+        return fullMatchResponse.copy(matches = fullMatchResponse.matches.take(6))
     }
 
     private fun String.normalize(): String = trim().lowercase()
