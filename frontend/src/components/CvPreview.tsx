@@ -4,6 +4,8 @@ import type { CvResponse } from '../api'
 type JobCriteria = {
   roleKeywords: string[]
   location?: string
+  includeReasoning: boolean
+  reasoningLimit: number
 }
 
 type CvPreviewProps = {
@@ -32,6 +34,8 @@ export default function CvPreview({
 }: CvPreviewProps) {
   const [jobKeywords, setJobKeywords] = useState('')
   const [jobLocation, setJobLocation] = useState('')
+  const [includeReasoning, setIncludeReasoning] = useState(false)
+  const [reasoningLimit, setReasoningLimit] = useState(3)
 
   if (loading) {
     return <p className="muted">Loading CV preview...</p>
@@ -54,6 +58,8 @@ export default function CvPreview({
     onContinue({
       roleKeywords: splitCsv(jobKeywords),
       location: jobLocation.trim() || undefined,
+      includeReasoning,
+      reasoningLimit,
     })
   }
 
@@ -103,6 +109,29 @@ export default function CvPreview({
           />
           <input value={jobLocation} onChange={(e) => setJobLocation(e.target.value)} placeholder="Job location" />
         </div>
+
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <input
+            type="checkbox"
+            checked={includeReasoning}
+            onChange={(e) => setIncludeReasoning(e.target.checked)}
+            style={{ width: 16, height: 16 }}
+          />
+          Generate AI reasoning now (uses more API calls)
+        </label>
+
+        {includeReasoning ? (
+          <label style={{ display: 'grid', gap: 6 }}>
+            Number of jobs with reasoning
+            <input
+              type="number"
+              min={1}
+              max={10}
+              value={reasoningLimit}
+              onChange={(e) => setReasoningLimit(Math.max(1, Math.min(10, Number(e.target.value) || 3)))}
+            />
+          </label>
+        ) : null}
 
         <button type="submit" disabled={continueLoading}>
           {continueLoading ? 'Searching and matching...' : 'Find Job Matches'}

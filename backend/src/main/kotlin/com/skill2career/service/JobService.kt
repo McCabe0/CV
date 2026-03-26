@@ -25,7 +25,7 @@ class JobService(
         val profileSkills = request.profileSkills.normalizedSet()
         val profileText = request.generatedCvOrProfile.normalize()
 
-        val matches = request.jobs.map { job ->
+        val initialMatches = request.jobs.map { job ->
             val requiredSkillsNormalized = job.requiredSkills.normalizedSet()
             val overlap = requiredSkillsNormalized.intersect(profileSkills)
             val missing = job.requiredSkills.filter { required ->
@@ -64,22 +64,34 @@ class JobService(
                 .roundToInt()
                 .coerceIn(0, 100)
 
-            val reasoning = geminiService.generateMatchReasoning(
-                cvOrProfile = request.generatedCvOrProfile,
-                job = job,
-                overlapPercent = overlapPercent,
-                missingSkills = missing
-            )
-
             JobMatchResult(
                 job = job,
                 score = score,
                 skillOverlapPercent = overlapPercent,
                 requiredSkillsMissing = missing,
                 confidence = confidence,
-                reasoning = reasoning
+                reasoning = "Reasoning not requested"
             )
         }.sortedWith(compareByDescending<JobMatchResult> { it.score }.thenByDescending { it.confidence })
+
+        val matches = if (!request.includeReasoning) {
+            initialMatches
+        } else {
+            val limit = request.reasoningLimit.coerceAtMost(initialMatches.size)
+            initialMatches.mapIndexed { index, match ->
+                if (index >= limit) {
+                    match
+                } else {
+                    val reasoning = geminiService.generateMatchReasoning(
+                        cvOrProfile = request.generatedCvOrProfile,
+                        job = match.job,
+                        overlapPercent = match.skillOverlapPercent,
+                        missingSkills = match.requiredSkillsMissing
+                    )
+                    match.copy(reasoning = reasoning)
+                }
+            }
+        }
 
         val savedMatches = persistenceService.saveMatchResults(
             profileId = request.profileId,
@@ -123,7 +135,8 @@ class JobService(
                 profileId = profileId,
                 generatedCvOrProfile = syntheticProfile,
                 profileSkills = derivedSkills,
-                jobs = aiJobs
+                jobs = aiJobs,
+                includeReasoning = false
             )
         )
 

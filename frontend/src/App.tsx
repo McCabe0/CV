@@ -6,6 +6,7 @@ import {
   searchJobs,
   type CvResponse,
   type JobItem,
+  type JobMatchPayload,
   type JobMatchResult,
   type Profile,
 } from './api'
@@ -33,6 +34,7 @@ export default function App() {
   const [cvId, setCvId] = useState<number | null>(null)
   const [cv, setCv] = useState<CvResponse | null>(null)
   const [matches, setMatches] = useState<JobMatchResult[]>([])
+  const [lastMatchPayload, setLastMatchPayload] = useState<JobMatchPayload | null>(null)
 
   const [profileLoading, setProfileLoading] = useState(false)
   const [profileError, setProfileError] = useState<string | null>(null)
@@ -62,19 +64,26 @@ export default function App() {
     }
   }
 
-  const fetchMatches = async (jobs: JobItem[], currentCv: CvResponse, currentProfile: Profile) => {
+  const createMatchPayload = (jobs: JobItem[], currentCv: CvResponse, currentProfile: Profile): JobMatchPayload => {
     const cvText = [currentCv.headline, currentCv.summary, ...currentCv.experienceBullets, currentCv.educationSection].join('\n')
 
-    return matchJobs({
+    return {
       profileId: profileId ?? undefined,
       cvId: cvId ?? undefined,
       generatedCvOrProfile: cvText,
       profileSkills: currentCv.keySkills.length > 0 ? currentCv.keySkills : currentProfile.skills,
       jobs,
-    })
+      includeReasoning: false,
+      reasoningLimit: 3,
+    }
   }
 
-  const handleFindMatches = async (criteria: { roleKeywords: string[]; location?: string }) => {
+  const handleFindMatches = async (criteria: {
+    roleKeywords: string[]
+    location?: string
+    includeReasoning: boolean
+    reasoningLimit: number
+  }) => {
     if (!cv || !profile) {
       setCvError('CV and profile data are required before matching jobs.')
       return
@@ -87,14 +96,12 @@ export default function App() {
     try {
       const fallbackKeywords = deriveFallbackKeywords(profile, cv)
 
-      // First pass: user criteria + CV skills.
       let searchResponse = await searchJobs({
         skills: cv.keySkills.length > 0 ? cv.keySkills : profile.skills,
         location: criteria.location,
         roleKeywords: criteria.roleKeywords.length > 0 ? criteria.roleKeywords : fallbackKeywords,
       })
 
-      // Second pass: broaden criteria if nothing was found.
       if (searchResponse.jobs.length === 0) {
         searchResponse = await searchJobs({
           skills: profile.skills.slice(0, 8),
@@ -104,13 +111,19 @@ export default function App() {
       }
 
       if (searchResponse.jobs.length > 0) {
-        const matchResponse = await fetchMatches(searchResponse.jobs, cv, profile)
+        const payload = createMatchPayload(searchResponse.jobs, cv, profile)
+        const matchResponse = await matchJobs({
+          ...payload,
+          includeReasoning: criteria.includeReasoning,
+          reasoningLimit: criteria.reasoningLimit,
+        })
+
+        setLastMatchPayload(payload)
         setMatches(matchResponse.matches)
         setStep('results')
         return
       }
 
-      // Final fallback: recommendations endpoint (works well when search is sparse).
       if (profileId) {
         const recommendationResponse = await getRecommendations(profileId)
         setMatches(recommendationResponse.matches)
@@ -125,6 +138,29 @@ export default function App() {
     } catch (error) {
       setResultsError(error instanceof Error ? error.message : 'Failed to find job matches')
       setStep('results')
+    } finally {
+      setResultsLoading(false)
+    }
+  }
+
+  const handleGenerateReasoning = async () => {
+    if (!lastMatchPayload) {
+      setResultsError('No match context available. Run job matching first.')
+      return
+    }
+
+    setResultsLoading(true)
+    setResultsError(null)
+
+    try {
+      const response = await matchJobs({
+        ...lastMatchPayload,
+        includeReasoning: true,
+        reasoningLimit: 3,
+      })
+      setMatches(response.matches)
+    } catch (error) {
+      setResultsError(error instanceof Error ? error.message : 'Failed to generate reasoning')
     } finally {
       setResultsLoading(false)
     }
@@ -185,9 +221,15 @@ export default function App() {
 
       {step === 'results' ? (
         <div className="grid">
-          <button type="button" onClick={handleRefreshRecommendations} disabled={resultsLoading || !profileId}>
-            {resultsLoading ? 'Refreshing...' : 'Refresh recommendations'}
-          </button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button type="button" onClick={handleRefreshRecommendations} disabled={resultsLoading || !profileId}>
+              {resultsLoading ? 'Refreshing...' : 'Refresh recommendations'}
+            </button>
+            <button type="button" onClick={handleGenerateReasoning} disabled={resultsLoading || !lastMatchPayload}>
+              {resultsLoading ? 'Generating...' : 'Generate reasoning for top 3'}
+            </button>
+          </div>
+
           <JobMatchList
             matches={matches}
             loading={resultsLoading}

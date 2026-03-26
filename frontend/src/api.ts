@@ -72,6 +72,8 @@ export type JobMatchPayload = {
   generatedCvOrProfile: string
   profileSkills: string[]
   jobs: JobItem[]
+  includeReasoning?: boolean
+  reasoningLimit?: number
 }
 
 export type JobMatchResult = {
