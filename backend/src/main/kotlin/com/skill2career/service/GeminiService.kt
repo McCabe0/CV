@@ -7,6 +7,7 @@ import com.skill2career.model.JobItem
 import com.skill2career.model.JobSearchRequest
 import com.skill2career.model.Profile
 import java.util.UUID
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClient
@@ -18,6 +19,7 @@ class GeminiService(
 ) {
 
     private val objectMapper = jacksonObjectMapper()
+    private val logger = LoggerFactory.getLogger(GeminiService::class.java)
 
     fun generateSummary(profile: Profile): CvSummarySections {
         val prompt = """
@@ -50,7 +52,7 @@ class GeminiService(
 
         return parsed ?: CvSummarySections(
             headline = "Professional Profile",
-            summary = "Failed to generate summary",
+            summary = if (raw.contains("Gemini unavailable")) raw else "Failed to generate summary",
             keySkills = profile.skills,
             experienceBullets = listOf(profile.experience),
             educationSection = profile.education,
@@ -228,22 +230,30 @@ class GeminiService(
             )
         )
 
-        val response = geminiWebClient.post()
-            .uri("/models/gemini-flash-latest:generateContent")
-            .header("Content-Type", "application/json")
-            .header("x-goog-api-key", apiKey)
-            .bodyValue(requestBody)
-            .retrieve()
-            .bodyToMono(Map::class.java)
-            .onErrorReturn(emptyMap<String, Any>())
-            .block()
+        return try {
+            val response = geminiWebClient.post()
+                .uri("/models/gemini-flash-latest:generateContent")
+                .header("Content-Type", "application/json")
+                .header("x-goog-api-key", apiKey)
+                .bodyValue(requestBody)
+                .retrieve()
+                .onStatus({ status -> status.isError }) { clientResponse ->
+                    clientResponse.bodyToMono(String::class.java)
+                        .map { body -> RuntimeException("Gemini API ${clientResponse.statusCode().value()}: $body") }
+                }
+                .bodyToMono(Map::class.java)
+                .block()
 
-        val candidates = response?.get("candidates") as? List<*>
-        val first = candidates?.firstOrNull() as? Map<*, *>
-        val content = first?.get("content") as? Map<*, *>
-        val parts = content?.get("parts") as? List<*>
-        val textObj = parts?.firstOrNull() as? Map<*, *>
+            val candidates = response?.get("candidates") as? List<*>
+            val first = candidates?.firstOrNull() as? Map<*, *>
+            val content = first?.get("content") as? Map<*, *>
+            val parts = content?.get("parts") as? List<*>
+            val textObj = parts?.firstOrNull() as? Map<*, *>
 
-        return textObj?.get("text")?.toString() ?: fallback
+            textObj?.get("text")?.toString() ?: fallback
+        } catch (error: Exception) {
+            logger.warn("Gemini call failed: ${error.message}")
+            "$fallback | Gemini unavailable (${error.message?.take(180) ?: "unknown error"})"
+        }
     }
 }
