@@ -28,6 +28,12 @@ if ! command -v npm >/dev/null 2>&1; then
   exit 1
 fi
 
+if [[ -z "${GEMINI_API_KEY:-}" ]]; then
+  echo "Warning: GEMINI_API_KEY is not set. The backend will start, but Gemini"
+  echo "         calls will fail and fall back to degraded responses."
+  echo "         Set it with: export GEMINI_API_KEY=\"your-key\""
+fi
+
 echo "Starting backend (gradle bootRun)..."
 (
   cd "$BACKEND_DIR"

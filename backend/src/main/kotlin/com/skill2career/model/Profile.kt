@@ -22,5 +22,10 @@ data class Profile(
     val workAuthorization: String? = null,
     val projects: List<String> = emptyList(),
     val certifications: List<String> = emptyList(),
-    val languages: List<String> = emptyList()
+    val languages: List<String> = emptyList(),
+    val email: String? = null,
+    val phone: String? = null,
+    val linkedin: String? = null,
+    val portfolio: String? = null,
+    val workHistory: List<WorkExperience> = emptyList()
 )

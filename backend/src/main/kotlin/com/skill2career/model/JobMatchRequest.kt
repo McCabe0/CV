@@ -17,5 +17,13 @@ data class JobMatchRequest(
     val includeReasoning: Boolean = false,
     @field:Min(value = 1, message = "reasoningLimit must be >= 1")
     @field:Max(value = 10, message = "reasoningLimit must be <= 10")
-    val reasoningLimit: Int = 3
+    val reasoningLimit: Int = 3,
+    /** Preferred job location used to boost remote / location-matching roles. */
+    val preferredLocation: String? = null,
+    /** Candidate years of experience used for seniority alignment. */
+    val candidateYears: Int? = null,
+    /** Matches scoring below this value are dropped (0 = keep all). */
+    @field:Min(value = 0, message = "minScore must be >= 0")
+    @field:Max(value = 100, message = "minScore must be <= 100")
+    val minScore: Int = 0
 )

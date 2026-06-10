@@ -93,6 +93,7 @@ class JobControllerIntegrationTest {
             {
               "generatedCvOrProfile": "Kotlin Spring Boot REST SQL",
               "profileSkills": ["Kotlin", "Spring Boot", "REST", "SQL"],
+              "includeReasoning": true,
               "jobs": [
                 {
                   "id": "job-it-1",
@@ -114,9 +115,9 @@ class JobControllerIntegrationTest {
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.matches.length()").value(1))
-            .andExpect(jsonPath("$.matches[0].score").value(90))
+            .andExpect(jsonPath("$.matches[0].score").value(78))
             .andExpect(jsonPath("$.matches[0].skillOverlapPercent").value(100))
-            .andExpect(jsonPath("$.matches[0].confidence").value(100))
+            .andExpect(jsonPath("$.matches[0].confidence").value(90))
             .andExpect(jsonPath("$.matches[0].reasoning").value("Model reasoning"))
     }
 

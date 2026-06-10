@@ -6,6 +6,7 @@ type JobCriteria = {
   location?: string
   includeReasoning: boolean
   reasoningLimit: number
+  minScore: number
 }
 
 type CvPreviewProps = {
@@ -15,6 +16,9 @@ type CvPreviewProps = {
   onUpdateCv: (cv: CvResponse) => void
   onContinue: (criteria: JobCriteria) => void
   continueLoading?: boolean
+  onBackToProfile: () => void
+  onRegenerate: () => void
+  onDownloadPdf: () => void
 }
 
 function splitCsv(value: string): string[] {
@@ -31,11 +35,15 @@ export default function CvPreview({
   onUpdateCv,
   onContinue,
   continueLoading,
+  onBackToProfile,
+  onRegenerate,
+  onDownloadPdf,
 }: CvPreviewProps) {
   const [jobKeywords, setJobKeywords] = useState('')
   const [jobLocation, setJobLocation] = useState('')
   const [includeReasoning, setIncludeReasoning] = useState(false)
   const [reasoningLimit, setReasoningLimit] = useState(3)
+  const [minScore, setMinScore] = useState(0)
 
   if (loading) {
     return <p className="muted">Loading CV preview...</p>
@@ -60,12 +68,26 @@ export default function CvPreview({
       location: jobLocation.trim() || undefined,
       includeReasoning,
       reasoningLimit,
+      minScore,
     })
   }
 
   return (
     <section className="card grid">
-      <h2 style={{ margin: 0 }}>Step 2: Tune your CV and search criteria</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <h2 style={{ margin: 0 }}>Step 2: Tune your CV and search criteria</h2>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button type="button" onClick={onBackToProfile}>
+            Back to profile
+          </button>
+          <button type="button" onClick={onRegenerate}>
+            Regenerate CV
+          </button>
+          <button type="button" onClick={onDownloadPdf}>
+            Download PDF
+          </button>
+        </div>
+      </div>
       <p className="muted" style={{ margin: 0 }}>Edit anything below before running job matching.</p>
 
       <input value={cv.headline} onChange={(e) => update({ headline: e.target.value })} />
@@ -109,6 +131,18 @@ export default function CvPreview({
           />
           <input value={jobLocation} onChange={(e) => setJobLocation(e.target.value)} placeholder="Job location" />
         </div>
+
+        <label style={{ display: 'grid', gap: 6 }}>
+          Minimum match score: {minScore}
+          <input
+            type="range"
+            min={0}
+            max={100}
+            step={5}
+            value={minScore}
+            onChange={(e) => setMinScore(Number(e.target.value))}
+          />
+        </label>
 
         <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <input

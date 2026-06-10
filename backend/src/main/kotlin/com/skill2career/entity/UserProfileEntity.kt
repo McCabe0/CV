@@ -27,6 +27,42 @@ class UserProfileEntity(
     @Column(nullable = false, columnDefinition = "TEXT")
     var education: String = "",
 
+    @Column
+    var targetRole: String? = null,
+
+    @Column
+    var yearsOfExperience: String? = null,
+
+    @Column
+    var location: String? = null,
+
+    @Column
+    var workAuthorization: String? = null,
+
+    @Column(columnDefinition = "TEXT")
+    var projects: String = "",
+
+    @Column(columnDefinition = "TEXT")
+    var certifications: String = "",
+
+    @Column(columnDefinition = "TEXT")
+    var languages: String = "",
+
+    @Column
+    var email: String? = null,
+
+    @Column
+    var phone: String? = null,
+
+    @Column
+    var linkedin: String? = null,
+
+    @Column
+    var portfolio: String? = null,
+
+    @Column(columnDefinition = "TEXT")
+    var workHistoryJson: String = "[]",
+
     @Column(nullable = false)
     var createdAt: Instant = Instant.now()
 )

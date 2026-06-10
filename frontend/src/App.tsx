@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   generateCv,
+  generateCvForProfile,
   getRecommendations,
   matchJobs,
   searchJobs,
@@ -13,8 +14,21 @@ import {
 import CvPreview from './components/CvPreview'
 import JobMatchList from './components/JobMatchList'
 import ProfileForm from './components/ProfileForm'
+import { downloadCvPdf } from './cvPdf'
 
 type Step = 'profile' | 'cv' | 'results'
+
+const STEPS: { key: Step; label: string }[] = [
+  { key: 'profile', label: '1. Profile' },
+  { key: 'cv', label: '2. CV' },
+  { key: 'results', label: '3. Job Matches' },
+]
+
+function parseYears(value?: string): number | undefined {
+  if (!value) return undefined
+  const match = value.match(/\d+/)
+  return match ? Number(match[0]) : undefined
+}
 
 function deriveFallbackKeywords(profile: Profile, cv: CvResponse): string[] {
   const fromTargetRole = profile.targetRole ? [profile.targetRole] : []
@@ -38,12 +52,58 @@ export default function App() {
 
   const [profileLoading, setProfileLoading] = useState(false)
   const [profileError, setProfileError] = useState<string | null>(null)
-  const [cvLoading] = useState(false)
+  const [cvLoading, setCvLoading] = useState(false)
   const [cvError, setCvError] = useState<string | null>(null)
   const [resultsLoading, setResultsLoading] = useState(false)
   const [resultsError, setResultsError] = useState<string | null>(null)
 
-  const stepIndex = useMemo(() => (step === 'profile' ? 0 : step === 'cv' ? 1 : 2), [step])
+  const stepIndex = useMemo(() => STEPS.findIndex((entry) => entry.key === step), [step])
+
+  // Track the furthest step reached so the stepper can navigate back to visited steps.
+  const [maxStepIndex, setMaxStepIndex] = useState(0)
+  useEffect(() => {
+    setMaxStepIndex((current) => Math.max(current, stepIndex))
+  }, [stepIndex])
+
+  const handleReset = () => {
+    setProfile(null)
+    setProfileId(null)
+    setCvId(null)
+    setCv(null)
+    setMatches([])
+    setLastMatchPayload(null)
+    setProfileError(null)
+    setCvError(null)
+    setResultsError(null)
+    setMaxStepIndex(0)
+    setStep('profile')
+  }
+
+  const handleDownloadPdf = () => {
+    if (cv) {
+      downloadCvPdf(cv, profile)
+    }
+  }
+
+  const handleRegenerateCv = async () => {
+    if (!profileId) {
+      setCvError('No profile ID found. Please complete Step 1 first.')
+      return
+    }
+
+    setCvLoading(true)
+    setCvError(null)
+
+    try {
+      const regenerated = await generateCvForProfile(profileId)
+      setCv(regenerated)
+      setCvId(regenerated.cvId)
+    } catch (error) {
+      setCvError(error instanceof Error ? error.message : 'Failed to regenerate CV')
+    } finally {
+      setCvLoading(false)
+    }
+  }
 
   const handleProfileSubmit = async (profilePayload: Profile) => {
     setProfileLoading(true)
@@ -64,7 +124,12 @@ export default function App() {
     }
   }
 
-  const createMatchPayload = (jobs: JobItem[], currentCv: CvResponse, currentProfile: Profile): JobMatchPayload => {
+  const createMatchPayload = (
+    jobs: JobItem[],
+    currentCv: CvResponse,
+    currentProfile: Profile,
+    criteria: { location?: string; minScore: number },
+  ): JobMatchPayload => {
     const cvText = [currentCv.headline, currentCv.summary, ...currentCv.experienceBullets, currentCv.educationSection].join('\n')
 
     return {
@@ -75,6 +140,9 @@ export default function App() {
       jobs,
       includeReasoning: false,
       reasoningLimit: 3,
+      preferredLocation: criteria.location,
+      candidateYears: parseYears(currentProfile.yearsOfExperience),
+      minScore: criteria.minScore,
     }
   }
 
@@ -83,6 +151,7 @@ export default function App() {
     location?: string
     includeReasoning: boolean
     reasoningLimit: number
+    minScore: number
   }) => {
     if (!cv || !profile) {
       setCvError('CV and profile data are required before matching jobs.')
@@ -111,7 +180,10 @@ export default function App() {
       }
 
       if (searchResponse.jobs.length > 0) {
-        const payload = createMatchPayload(searchResponse.jobs, cv, profile)
+        const payload = createMatchPayload(searchResponse.jobs, cv, profile, {
+          location: criteria.location,
+          minScore: criteria.minScore,
+        })
         const matchResponse = await matchJobs({
           ...payload,
           includeReasoning: criteria.includeReasoning,
@@ -188,18 +260,33 @@ export default function App() {
   return (
     <div className="app-shell">
       <div className="card">
-        <h1 style={{ margin: '0 0 4px' }}>Skill2Career</h1>
-        <p className="muted" style={{ margin: 0 }}>
-          Build your profile, generate your CV, and get matched jobs in one flow.
-        </p>
-
-        <div className="stepper">
-          <span className={`step-pill ${stepIndex >= 0 ? 'active' : ''}`}>1. Profile</span>
-          <span className={`step-pill ${stepIndex >= 1 ? 'active' : ''}`}>2. CV</span>
-          <span className={`step-pill ${stepIndex >= 2 ? 'active' : ''}`}>3. Job Matches</span>
+        <div className="card-header">
+          <div>
+            <h1>Skill2Career</h1>
+            <p className="muted">
+              Build your profile, generate your CV, and get matched jobs in one flow.
+            </p>
+          </div>
+          <button type="button" onClick={handleReset} disabled={stepIndex === 0 && !profile}>
+            Start over
+          </button>
         </div>
 
-        <p className="muted" style={{ margin: 0 }}>
+        <div className="stepper">
+          {STEPS.map((entry, index) => (
+            <button
+              key={entry.key}
+              type="button"
+              className={`step-pill ${stepIndex >= index ? 'active' : ''}`}
+              onClick={() => setStep(entry.key)}
+              disabled={index > maxStepIndex}
+            >
+              {entry.label}
+            </button>
+          ))}
+        </div>
+
+        <p className="muted id-line">
           Profile ID: <strong>{profileId ?? 'N/A'}</strong> | CV ID: <strong>{cvId ?? 'N/A'}</strong>
         </p>
       </div>
@@ -216,12 +303,15 @@ export default function App() {
           onUpdateCv={setCv}
           onContinue={handleFindMatches}
           continueLoading={resultsLoading}
+          onBackToProfile={() => setStep('profile')}
+          onRegenerate={handleRegenerateCv}
+          onDownloadPdf={handleDownloadPdf}
         />
       ) : null}
 
       {step === 'results' ? (
         <div className="grid">
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <div className="results-actions">
             <button type="button" onClick={handleRefreshRecommendations} disabled={resultsLoading || !profileId}>
               {resultsLoading ? 'Refreshing...' : 'Refresh recommendations'}
             </button>

@@ -4,10 +4,13 @@ import com.skill2career.entity.GeneratedCvEntity
 import com.skill2career.entity.JobEntity
 import com.skill2career.entity.JobMatchEntity
 import com.skill2career.entity.UserProfileEntity
+import com.fasterxml.jackson.core.type.TypeReference
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.skill2career.model.CvResponse
 import com.skill2career.model.JobItem
 import com.skill2career.model.JobMatchResult
 import com.skill2career.model.Profile
+import com.skill2career.model.WorkExperience
 import com.skill2career.repository.GeneratedCvRepository
 import com.skill2career.repository.JobMatchRepository
 import com.skill2career.repository.JobRepository
@@ -22,13 +25,27 @@ class PersistenceService(
     private val jobMatchRepository: JobMatchRepository
 ) {
 
+    private val objectMapper = jacksonObjectMapper()
+
     fun saveSubmittedProfile(profile: Profile): UserProfileEntity =
         userProfileRepository.save(
             UserProfileEntity(
                 name = profile.name,
                 skills = profile.skills.pack(),
                 experience = profile.experience,
-                education = profile.education
+                education = profile.education,
+                targetRole = profile.targetRole,
+                yearsOfExperience = profile.yearsOfExperience,
+                location = profile.location,
+                workAuthorization = profile.workAuthorization,
+                projects = profile.projects.pack(),
+                certifications = profile.certifications.pack(),
+                languages = profile.languages.pack(),
+                email = profile.email,
+                phone = profile.phone,
+                linkedin = profile.linkedin,
+                portfolio = profile.portfolio,
+                workHistoryJson = objectMapper.writeValueAsString(profile.workHistory)
             )
         )
 
@@ -53,16 +70,22 @@ class PersistenceService(
     fun saveSearchedJobs(jobs: List<JobItem>): List<JobEntity> =
         jobRepository.saveAll(
             jobs.map { job ->
-                JobEntity(
-                    externalJobId = job.id,
-                    title = job.title,
-                    company = job.company,
-                    location = job.location,
-                    description = job.description,
-                    requiredSkills = job.requiredSkills.pack(),
-                    roleKeywords = job.roleKeywords.pack(),
+                // Reuse the existing row when this job has already been persisted (the search
+                // flow saves jobs, then the match flow saves them again) so we update in place
+                // rather than accumulating duplicate rows for the same listing.
+                val entity = job.id.takeIf { it.isNotBlank() }
+                    ?.let { jobRepository.findFirstByExternalJobId(it) }
+                    ?: JobEntity(externalJobId = job.id)
+
+                entity.apply {
+                    title = job.title
+                    company = job.company
+                    location = job.location
+                    description = job.description
+                    requiredSkills = job.requiredSkills.pack()
+                    roleKeywords = job.roleKeywords.pack()
                     source = job.source
-                )
+                }
             }
         )
 
@@ -96,8 +119,25 @@ class PersistenceService(
             name = entity.name,
             skills = entity.skills.unpack(),
             experience = entity.experience,
-            education = entity.education
+            education = entity.education,
+            targetRole = entity.targetRole,
+            yearsOfExperience = entity.yearsOfExperience,
+            location = entity.location,
+            workAuthorization = entity.workAuthorization,
+            projects = entity.projects.unpack(),
+            certifications = entity.certifications.unpack(),
+            languages = entity.languages.unpack(),
+            email = entity.email,
+            phone = entity.phone,
+            linkedin = entity.linkedin,
+            portfolio = entity.portfolio,
+            workHistory = entity.workHistoryJson.unpackWorkHistory()
         )
+
+    private fun String.unpackWorkHistory(): List<WorkExperience> =
+        runCatching {
+            objectMapper.readValue(this, object : TypeReference<List<WorkExperience>>() {})
+        }.getOrDefault(emptyList())
 
     private fun List<String>.pack(): String = joinToString("||") { it.trim() }
 

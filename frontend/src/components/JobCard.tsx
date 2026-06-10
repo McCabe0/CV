@@ -5,6 +5,12 @@ type JobCardProps = {
   match: JobMatchResult
 }
 
+function toneClass(value: number): string {
+  if (value >= 75) return 'chip-strong'
+  if (value >= 50) return 'chip-good'
+  return 'chip-weak'
+}
+
 function getJobLink(match: JobMatchResult): string {
   if (match.job.url) return match.job.url
   if (match.job.source?.startsWith('http')) return match.job.source
@@ -24,9 +30,9 @@ export default function JobCard({ match }: JobCardProps) {
       </p>
 
       <div className="chips">
-        <span className="chip">Score: {match.score}%</span>
-        <span className="chip">Confidence: {match.confidence}%</span>
-        <span className="chip">Overlap: {match.skillOverlapPercent}%</span>
+        <span className={`chip ${toneClass(match.score)}`}>Score: {match.score}%</span>
+        <span className={`chip ${toneClass(match.confidence)}`}>Confidence: {match.confidence}%</span>
+        <span className={`chip ${toneClass(match.skillOverlapPercent)}`}>Overlap: {match.skillOverlapPercent}%</span>
       </div>
 
       <p>{match.reasoning}</p>
