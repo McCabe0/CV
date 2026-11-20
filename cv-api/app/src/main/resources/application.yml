@@ -1,0 +1,95 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+  forward-headers-strategy: native
+  shutdown: graceful
+
+# The roles this process runs: api, cv-worker, job-worker, comma separated. See decisions/architecture.md.
+app:
+  roles: ${APP_ROLES:api}
+
+spring:
+  application:
+    name: cv-api
+
+  flyway:
+    enabled: true
+    default-schema: skill2career
+    create-schemas: true
+
+  jpa:
+    open-in-view: false
+    generate-ddl: false
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        default_schema: skill2career
+        default_batch_fetch_size: 100
+      jakarta.persistence.query.timeout: 5000
+
+  # Limits the whole transaction, so many quick queries (an n+1) fail fast too.
+  transaction:
+    default-timeout: 10s
+
+  # No default: the start fails fast if DATASOURCE_URL is not set.
+  datasource:
+    url: ${DATASOURCE_URL}
+    hikari:
+      schema: skill2career
+      # Per instance, so instances times this must stay under the database's max_connections.
+      maximum-pool-size: 20
+      connection-timeout: 5000
+      validation-timeout: 2000
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          authorities-claim-name: roles
+          authority-prefix: ROLE_
+
+  web:
+    error:
+      include-message: never
+      include-binding-errors: never
+      include-stacktrace: never
+
+springdoc:
+  default-produces-media-type: application/json
+  default-consumes-media-type: application/json
+  swagger-ui:
+    oauth:
+      client-id: cv-api
+      use-pkce-with-authorization-code-grant: true
+
+# Each query is a span in its request's trace, with the sql but not its values, which can be personal data.
+jdbc:
+  includes: connection, query
+  datasource-proxy:
+    include-parameter-values: false
+
+management:
+  otlp:
+    metrics:
+      export:
+        enabled: false
+  opentelemetry:
+    resource-attributes:
+      service.version: ${SERVICE_VERSION:unknown}
+      app.roles: ${app.roles}
+  endpoints:
+    web:
+      base-path: /
+      exposure:
+        include: 'info, health'
+  endpoint:
+    health:
+      cache:
+        time-to-live: 2000ms
+      show-components: when-authorized
+      show-details: when-authorized
+      probes:
+        enabled: true
+        add-additional-paths: true

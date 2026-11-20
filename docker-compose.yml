@@ -1,28 +1,201 @@
-# Local Postgres for developing against the production code path.
-# Start: docker compose up -d
-# Then run the backend with the `prod` profile (see docs/accounts-and-db-plan.md):
-#   SPRING_PROFILES_ACTIVE=prod \
-#   DATABASE_URL=jdbc:postgresql://localhost:5432/skill2career \
-#   DATABASE_USER=skill2career DATABASE_PASSWORD=localdev \
-#   ./gradlew bootRun
+# The whole stack: `docker compose up --build -d --wait`. See README.md and decisions/.
+#
+# | what                         | where                                     |
+# |------------------------------|-------------------------------------------|
+# | api, swagger                 | http://localhost:8080/api/swagger-ui.html |
+# | keycloak admin               | http://localhost:8180 (admin / admin)     |
+# | kafka ui: topics, lag, dlq   | http://localhost:8090                     |
+# | grafana: metrics, logs       | http://localhost:3300                     |
+# | jaeger: traces               | http://localhost:16686                    |
+
+x-api-environment: &api-environment
+  DATASOURCE_URL: jdbc:postgresql://db:5432/skill2career
+  SPRING_DATASOURCE_USERNAME: skill2career
+  SPRING_DATASOURCE_PASSWORD: skill2career
+  # The browser and swagger see keycloak at localhost:8180; the api fetches its keys inside the network.
+  SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://localhost:8180/realms/skill2career
+  SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/skill2career/protocol/openid-connect/certs
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://collector:4318/v1/traces
+  MANAGEMENT_OPENTELEMETRY_LOGGING_EXPORT_OTLP_ENDPOINT: http://collector:4318/v1/logs
+  MANAGEMENT_OTLP_METRICS_EXPORT_ENABLED: "true"
+  MANAGEMENT_OTLP_METRICS_EXPORT_URL: http://collector:4318/v1/metrics
+  MANAGEMENT_OTLP_METRICS_EXPORT_STEP: 15s
+  # Every request locally, so any one you make can be found.
+  MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
+  GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+
+x-api-service: &api-service
+  image: ${API_IMAGE:-cv-api}
+  healthcheck:
+    test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/api/health"]
+    interval: 5s
+    timeout: 5s
+    retries: 60
+
 services:
-  postgres:
+  db:
     image: postgres:16
-    container_name: skill2career-db
-    restart: unless-stopped
     environment:
       POSTGRES_DB: skill2career
       POSTGRES_USER: skill2career
-      POSTGRES_PASSWORD: localdev
+      POSTGRES_PASSWORD: skill2career
     ports:
       - "5432:5432"
-    volumes:
-      - skill2career-pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U skill2career -d skill2career"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 20
 
-volumes:
-  skill2career-pgdata:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    command: start-dev --import-realm
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HOSTNAME: http://localhost:8180
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      KC_HEALTH_ENABLED: "true"
+    volumes:
+      # One realm for the api's tests, this stack, and the ui's tests.
+      - ./cv-api/app/src/test/resources/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+    ports:
+      - "8180:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && grep -q UP <&3"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+
+  # Kafka in kraft mode, with no zookeeper. See decisions/messaging.md.
+  # Inside the network it is kafka:9092, from the host localhost:29092.
+  kafka:
+    image: apache/kafka:4.1.0
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: INTERNAL://:9092,EXTERNAL://:29092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      # The api declares its topics, so a typo cannot make a new one.
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_NUM_PARTITIONS: 6
+    ports:
+      - "29092:29092"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+
+  # Topics, consumer lag and the dead letter topics, to look at by hand.
+  kafka-ui:
+    image: ghcr.io/kafbat/kafka-ui:v1.2.0
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    ports:
+      - "8090:8080"
+
+  # Observability. The apps only send to the collector. See decisions/observability.md.
+  collector:
+    image: otel/opentelemetry-collector-contrib:0.164.0-386
+    command: --config=/etc/collector/config.yaml
+    ports:
+      - "4318:4318"
+    volumes:
+      - ./local/collector/config.yaml:/etc/collector/config.yaml:ro
+
+  jaeger:
+    image: jaegertracing/jaeger:2.22.0
+    ports:
+      - "16686:16686"
+
+  prometheus:
+    image: prom/prometheus:v3.15.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --web.enable-otlp-receiver
+    volumes:
+      - ./local/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+  loki:
+    image: grafana/loki:3.7.9
+
+  grafana:
+    image: grafana/grafana:13.3.0
+    depends_on:
+      - prometheus
+      - loki
+      - jaeger
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      # Editor, so Explore works without signing in. Sign in only to administer.
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Editor
+    volumes:
+      - ./local/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./local/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3300:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/api/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  # One image, three roles, each scaled on its own. See decisions/architecture.md.
+  # More workers: `docker compose up -d --scale cv-worker=3`.
+  api:
+    <<: *api-service
+    build:
+      context: ./cv-api
+      args:
+        GIT_SHA: ${GIT_SHA:-unknown}
+    depends_on:
+      db:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      collector:
+        condition: service_started
+    environment:
+      <<: *api-environment
+      APP_ROLES: api
+      OTEL_SERVICE_NAME: cv-api
+    ports:
+      - "8080:8080"
+
+  cv-worker:
+    <<: *api-service
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      <<: *api-environment
+      APP_ROLES: cv-worker
+      OTEL_SERVICE_NAME: cv-worker
+
+  job-worker:
+    <<: *api-service
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      <<: *api-environment
+      APP_ROLES: job-worker
+      OTEL_SERVICE_NAME: job-worker

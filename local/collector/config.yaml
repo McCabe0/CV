@@ -1,0 +1,44 @@
+# Everything the apps send goes through here, so they only know otlp and this address. Swapping a
+# backend means changing this file. See decisions/observability.md.
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+
+connectors:
+  # Request rate, errors and duration for every service, from its traces. The ui's apps send no
+  # metrics of their own, so this is where theirs come from.
+  span_metrics:
+    histogram:
+      explicit:
+        buckets: [5ms, 10ms, 25ms, 50ms, 100ms, 200ms, 300ms, 500ms, 1s, 2s, 5s]
+    metrics_flush_interval: 15s
+
+exporters:
+  otlp_grpc/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+  otlp_http/prometheus:
+    endpoint: http://prometheus:9090/api/v1/otlp
+  otlp_http/loki:
+    endpoint: http://loki:3100/otlp
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp_grpc/jaeger, span_metrics]
+    metrics:
+      receivers: [otlp, span_metrics]
+      processors: [batch]
+      exporters: [otlp_http/prometheus]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp_http/loki]
