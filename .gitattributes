@@ -1,0 +1,5 @@
+# Scripts that run in linux containers and ci keep unix line endings, whatever the checkout.
+gradlew text eol=lf
+*.sh text eol=lf
+*.bat text eol=crlf
+*.jar binary
