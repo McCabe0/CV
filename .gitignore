@@ -1,0 +1,38 @@
+# ---------- Secrets / env ----------
+.env
+.env.*
+!.env.example
+*.local
+secrets.properties
+!secrets.properties.example
+
+# ---------- Java / Gradle (backend) ----------
+.gradle/
+**/build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/**/build/
+*.class
+*.log
+hs_err_pid*
+
+# ---------- Node / Vite (frontend) ----------
+node_modules/
+dist/
+dist-ssr/
+.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---------- IDE / editors ----------
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# ---------- OS ----------
+.DS_Store
+Thumbs.db
+desktop.ini

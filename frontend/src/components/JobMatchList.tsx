@@ -27,29 +27,41 @@ export default function JobMatchList({ matches, loading, error, onBackToCv }: Jo
 
   return (
     <section className="card grid">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-        <h2 style={{ margin: 0 }}>Step 3: Job match results</h2>
+      <div className="section-head">
+        <h2>Step 3 · Job match results</h2>
         <button onClick={onBackToCv} type="button">
           Back to CV editor
         </button>
       </div>
 
-      {loading ? <p className="muted">Loading job matches...</p> : null}
+      {loading
+        ? [0, 1, 2].map((i) => (
+            <div key={i} className="job-card grid" aria-hidden="true">
+              <div className="skeleton skeleton-line lg" />
+              <div className="skeleton skeleton-line sm" />
+              <div className="skeleton skeleton-line" />
+              <div className="skeleton skeleton-line" />
+            </div>
+          ))
+        : null}
+
       {error ? <p className="error">{error}</p> : null}
-      {!loading && !error && matches.length === 0 ? <p className="muted">No matches yet. Try broader keywords or refresh recommendations.</p> : null}
+      {!loading && !error && matches.length === 0 ? (
+        <p className="muted">No matches yet. Try broader keywords or refresh recommendations.</p>
+      ) : null}
 
       {!loading && !error ? pageItems.map((match) => <JobCard key={`${match.job.id}-${match.job.company}`} match={match} />) : null}
 
       {!loading && !error && matches.length > PAGE_SIZE ? (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="pager">
           <button type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page <= 1}>
-            Previous
+            ← Previous
           </button>
-          <p className="muted" style={{ margin: 0 }}>
+          <p className="muted">
             Page {page} / {totalPages}
           </p>
           <button type="button" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page >= totalPages}>
-            Next
+            Next →
           </button>
         </div>
       ) : null}
