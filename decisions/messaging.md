@@ -53,3 +53,10 @@ to the streams it holds. No shared cache is needed.
   progress listener reads only new messages (`auto.offset.reset=latest`), one group per api instance.
 - `GET /api/cv-requests/{id}/events` ends once the request is completed or failed, and after 15 minutes;
   a browser still there reconnects.
+
+## as built (slice 4)
+- `jobs.crawl` carries `{eventId, companyId}`, keyed by the company, written to the outbox by the
+  job-worker's daily schedule, one per tracked company, so the crawls spread over every job-worker.
+- the job-worker's listener (group `job-worker`) crawls the company's board, skipping an event it has
+  handled. A failure retries on ONE `jobs.crawl.retry` topic, then parks on `jobs.crawl.dlq`; the
+  company's jobs stay as they were. See decisions/jobs.md.

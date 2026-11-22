@@ -24,9 +24,12 @@ object Topics {
 
     /** A CV request changed: every api instance passes it to the progress streams it holds. */
     const val CV_PROGRESS = "cv.progress"
+
+    /** One company's board for a job-worker to crawl. Keyed by the company. */
+    const val JOBS_CRAWL = "jobs.crawl"
 }
 
-private val json = JsonMapper.builder().addModule(KotlinModule.Builder().build()).build()
+internal val json = JsonMapper.builder().addModule(KotlinModule.Builder().build()).build()
 
 /**
  * A message about one CV request, on [Topics.CV_REQUESTED] or [Topics.CV_PROGRESS]. Only its id: a
@@ -62,6 +65,14 @@ class OutboxEntity(
         fun work(message: RequestMessage) = of(Topics.CV_REQUESTED, message)
 
         fun progress(message: RequestMessage) = of(Topics.CV_PROGRESS, message)
+
+        fun crawl(message: CrawlMessage) =
+            OutboxEntity(
+                eventId = message.eventId,
+                topic = Topics.JOBS_CRAWL,
+                messageKey = message.companyId.toString(),
+                payload = message.write(),
+            )
 
         private fun of(
             topic: String,

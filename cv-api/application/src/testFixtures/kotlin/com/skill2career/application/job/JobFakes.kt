@@ -4,6 +4,7 @@ import com.skill2career.domain.job.Job
 import com.skill2career.domain.job.JobPosting
 import com.skill2career.domain.job.SourceType
 import com.skill2career.domain.job.TrackedCompany
+import java.time.LocalDate
 
 // Hand written fakes of the job ports, for any module's tests.
 
@@ -74,4 +75,10 @@ class RecordingCrawlQueue : CrawlQueue {
     override fun queue(company: TrackedCompany) {
         queued += company.id!!
     }
+}
+
+class InMemoryCrawlRuns : CrawlRuns {
+    private val claimed = mutableSetOf<LocalDate>()
+
+    override fun claim(day: LocalDate): Boolean = claimed.add(day)
 }

@@ -4,6 +4,7 @@ import com.skill2career.domain.job.Job
 import com.skill2career.domain.job.JobPosting
 import com.skill2career.domain.job.SourceType
 import com.skill2career.domain.job.TrackedCompany
+import java.time.LocalDate
 
 // The driven ports the crawl needs. Adapters implement them.
 
@@ -32,6 +33,12 @@ interface JobStore {
 /** Queues one company's crawl for whichever job-worker is free. */
 interface CrawlQueue {
     fun queue(company: TrackedCompany)
+}
+
+/** Which days' crawls have been queued, so each day's is queued once, by whichever job-worker asks first. */
+interface CrawlRuns {
+    /** True for the one caller that claims [day]; false for every later one. */
+    fun claim(day: LocalDate): Boolean
 }
 
 class TrackedCompanyNotFound(

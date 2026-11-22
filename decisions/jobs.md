@@ -48,8 +48,15 @@ kafka, as the CV does.
 
 ## decision: once a day, one crawl at a time
 - the crawl runs once a day. Job posts rarely change faster, and it keeps us polite to the boards.
-- a postgres advisory lock lets only one job-worker queue the day's crawl, however many run. No extra
-  library: the lock is postgres's own.
+- only one job-worker queues the day's crawl, however many run, using postgres alone: a `crawl_runs` row
+  per day, the date its primary key. Each job-worker asks a minute after it starts, then hourly; the
+  first to insert today's row queues the crawl, in the same transaction, and every later ask finds the
+  row and does nothing. So a worker that was down at the usual time still crawls that day, and none
+  crawls it twice. (Decided 2026-11-22. An advisory lock was the first idea, but a lock only stops two
+  workers queueing at the same moment, not one after the other.)
+- a crawl that fails is tried 3 times in all, a minute apart (`jobs.crawl.attempts`,
+  `jobs.crawl.retry-delay-ms`), then parked on `jobs.crawl.dlq` until the next day. An unknown board, a
+  company no longer tracked, or a board with no reader goes there at once.
 - a job its board lists again, after going inactive, is active again.
 
 ## starting companies

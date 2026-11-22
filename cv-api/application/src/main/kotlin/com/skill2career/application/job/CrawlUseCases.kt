@@ -2,13 +2,23 @@ package com.skill2career.application.job
 
 import com.skill2career.domain.job.Jobs
 import java.time.Clock
+import java.time.LocalDate
 
-/** The daily crawl: one queued crawl per company, so the work spreads over the job-workers. */
+/**
+ * The daily crawl: one queued crawl per company, so the work spreads over the job-workers. Every
+ * job-worker asks; only the first to claim [today] queues it. The claim and the queue belong in one
+ * transaction, so a failed queue leaves the day to claim again. Returns whether this call queued it.
+ */
 class ScheduleCrawl(
     private val companies: TrackedCompanyStore,
+    private val runs: CrawlRuns,
     private val queue: CrawlQueue,
 ) {
-    fun schedule() = companies.all().forEach(queue::queue)
+    fun schedule(today: LocalDate): Boolean {
+        if (!runs.claim(today)) return false
+        companies.all().forEach(queue::queue)
+        return true
+    }
 }
 
 /**
