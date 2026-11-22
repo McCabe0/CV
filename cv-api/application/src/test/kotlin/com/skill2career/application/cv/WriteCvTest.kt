@@ -1,16 +1,16 @@
 package com.skill2career.application.cv
 
 import com.skill2career.application.profile.InMemoryProfileStore
-import com.skill2career.domain.cv.Answer
 import com.skill2career.domain.cv.CvFixtures.awaitingAnswers
 import com.skill2career.domain.cv.CvFixtures.cv
-import com.skill2career.domain.cv.CvFixtures.question
 import com.skill2career.domain.cv.CvFixtures.rejected
 import com.skill2career.domain.cv.CvFixtures.review
 import com.skill2career.domain.cv.CvFixtures.writing
 import com.skill2career.domain.cv.CvStatus
 import com.skill2career.domain.cv.Review
 import com.skill2career.domain.cv.Round
+import com.skill2career.domain.profile.Fact
+import com.skill2career.domain.profile.ProfileFixtures.OWNER
 import com.skill2career.domain.profile.ProfileFixtures.profile
 import org.assertj.core.api.Assertions.assertThat
 import kotlin.test.Test
@@ -108,13 +108,8 @@ class WriteCvTest {
     }
 
     @Test
-    fun `gives the agents the profile, and the answers that were not skipped, as facts`() {
-        val answered =
-            requests.save(
-                awaitingAnswers(question(1, "By how much?"), question(2, "Which team?"))
-                    .copy(id = null)
-                    .answered(listOf(Answer(1, "By 40%"), Answer(2, " "))),
-            )
+    fun `gives the writer and the critic the profile, with the candidate's answers as its facts`() {
+        val withFacts = profiles.save(profiles.findByOwner(OWNER)!!.withFacts(listOf(Fact("By how much?", "By 40%"))))
         var criticBrief: Brief? = null
 
         write(
@@ -122,12 +117,10 @@ class WriteCvTest {
                 criticBrief = brief
                 review()
             },
-            id = answered.id!!,
         )
 
-        assertThat(briefs.single().profile).isEqualTo(profiles.findByOwner(answered.ownerId))
-        assertThat(briefs.single().facts).containsExactly(Fact("By how much?", "By 40%"))
-        assertThat(criticBrief!!.facts).isEqualTo(briefs.single().facts)
+        assertThat(briefs.single().profile).isEqualTo(withFacts)
+        assertThat(criticBrief!!.profile.facts).containsExactly(Fact("By how much?", "By 40%"))
     }
 
     @Test

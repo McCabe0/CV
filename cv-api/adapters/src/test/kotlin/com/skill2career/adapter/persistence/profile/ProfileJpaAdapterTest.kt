@@ -1,6 +1,7 @@
 package com.skill2career.adapter.persistence.profile
 
 import com.skill2career.adapter.persistence.PostgresTest
+import com.skill2career.domain.profile.Fact
 import com.skill2career.domain.profile.OwnerId
 import com.skill2career.domain.profile.ProfileFixtures.profile
 import org.assertj.core.api.Assertions.assertThat
@@ -30,6 +31,13 @@ class ProfileJpaAdapterTest : PostgresTest() {
         adapter.save(saved.copy(name = "Second"))
 
         assertThat(adapter.findByOwner(saved.ownerId)!!.name).isEqualTo("Second")
+    }
+
+    @Test
+    fun `keeps the candidate's answers as facts`() {
+        val saved = adapter.save(profile().withFacts(listOf(Fact("By how much?", "By 40%"))))
+
+        assertThat(adapter.findByOwner(saved.ownerId)!!.facts).containsExactly(Fact("By how much?", "By 40%"))
     }
 
     @Test

@@ -1,8 +1,8 @@
 package com.skill2career.adapter.agents
 
-import com.skill2career.application.cv.Fact
 import com.skill2career.domain.cv.Cv
 import com.skill2career.domain.cv.Round
+import com.skill2career.domain.profile.Fact
 import com.skill2career.domain.profile.Profile
 
 /** Json schema, as maps, written so both providers accept it: every property required, no others allowed. */
@@ -60,9 +60,11 @@ internal object Prompts {
             list("Certifications", profile.certifications)
             list("Languages", profile.languages)
             appendLine("</profile>")
+            append(answers(profile.facts))
         }
 
-    fun facts(facts: List<Fact>): String =
+    /** The candidate's answers to the interviewer, as facts as good as the profile's. */
+    private fun answers(facts: List<Fact>): String =
         if (facts.isEmpty()) {
             ""
         } else {

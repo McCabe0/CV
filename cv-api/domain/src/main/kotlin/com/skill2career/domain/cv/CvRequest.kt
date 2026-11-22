@@ -1,5 +1,6 @@
 package com.skill2career.domain.cv
 
+import com.skill2career.domain.profile.Fact
 import com.skill2career.domain.profile.OwnerId
 
 enum class CvStatus { REQUESTED, AWAITING_ANSWERS, WRITING, COMPLETED, FAILED }
@@ -36,6 +37,12 @@ data class CvRequest(
             status = CvStatus.WRITING,
         )
     }
+
+    /** The answers given, not skipped, as facts for the profile, in the words of their questions. */
+    fun facts(): List<Fact> =
+        answers
+            .filterNot { it.skipped }
+            .map { answer -> Fact(questions.first { it.id == answer.questionId }.text, answer.text!!) }
 
     /** Until the critic approves a draft, or the rounds run out. */
     val needsAnotherRound: Boolean

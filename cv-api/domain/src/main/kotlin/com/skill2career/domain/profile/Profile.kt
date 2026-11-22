@@ -25,6 +25,20 @@ data class WorkExperience(
     val bullets: List<String> = emptyList(),
 )
 
+/** Something the candidate told the interviewer: as much a fact for their CVs as the rest of the profile. */
+data class Fact(
+    val question: String,
+    val answer: String,
+) {
+    init {
+        require(question.isNotBlank()) { "a fact needs its question" }
+        require(answer.isNotBlank()) { "a fact needs an answer" }
+    }
+}
+
+/** The same question, however it is spaced or cased. Outside the class, so it is never saved with it. */
+private val Fact.key: String get() = question.trim().lowercase()
+
 /** What a candidate tells us about themselves. Everything the CV agents may say comes from here. */
 data class Profile(
     val id: Long? = null,
@@ -42,10 +56,19 @@ data class Profile(
     val languages: List<String> = emptyList(),
     val contact: Contact = Contact(),
     val workHistory: List<WorkExperience> = emptyList(),
+    /** The interviewer's answers, kept so a later CV uses them and the same question is not asked again. */
+    val facts: List<Fact> = emptyList(),
 ) {
     init {
         require(name.isNotBlank()) { "a profile needs a name" }
         require(experience.isNotBlank()) { "a profile needs experience" }
         require(education.isNotBlank()) { "a profile needs education" }
+    }
+
+    /** Adds the candidate's new answers. A newer answer to a question replaces the older, in its place. */
+    fun withFacts(new: List<Fact>): Profile {
+        val newer = new.associateBy { it.key }
+        val kept = facts.map { newer[it.key] ?: it }
+        return copy(facts = kept + new.filter { fact -> kept.none { it.key == fact.key } })
     }
 }

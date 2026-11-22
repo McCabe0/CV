@@ -1,5 +1,6 @@
 package com.skill2career.application.profile
 
+import com.skill2career.domain.profile.Fact
 import com.skill2career.domain.profile.OwnerId
 import com.skill2career.domain.profile.ProfileFixtures.profile
 import org.assertj.core.api.Assertions.assertThat
@@ -36,5 +37,14 @@ class SaveProfileTest {
 
         assertThat(mine.id).isNotEqualTo(theirs.id)
         assertThat(store.findByOwner(OwnerId("someone-else"))).isEqualTo(theirs)
+    }
+
+    @Test
+    fun `keeps the interviewer's facts, which the profile form does not send`() {
+        val withFacts = store.save(profile().withFacts(listOf(Fact("By how much?", "By 40%"))))
+
+        val saved = saveProfile.save(profile(name = "New name"))
+
+        assertThat(saved.facts).isEqualTo(withFacts.facts)
     }
 }

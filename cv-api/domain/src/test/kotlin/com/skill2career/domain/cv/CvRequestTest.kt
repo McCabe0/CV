@@ -6,6 +6,7 @@ import com.skill2career.domain.cv.CvFixtures.question
 import com.skill2career.domain.cv.CvFixtures.rejected
 import com.skill2career.domain.cv.CvFixtures.review
 import com.skill2career.domain.cv.CvFixtures.writing
+import com.skill2career.domain.profile.Fact
 import com.skill2career.domain.profile.ProfileFixtures.OWNER
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -71,6 +72,13 @@ class CvRequestTest {
     fun `refuses an answer to a question it was not asked`() {
         assertThatThrownBy { awaitingAnswers(question(1)).answered(listOf(Answer(9, "Hello"))) }
             .isInstanceOf(IllegalArgumentException::class.java)
+    }
+
+    @Test
+    fun `its answers, not skipped, are facts in the words of the question`() {
+        val request = awaitingAnswers(question(1, "By how much?"), question(2, "Which team?")).answered(listOf(Answer(1, "40%")))
+
+        assertThat(request.facts()).containsExactly(Fact("By how much?", "40%"))
     }
 
     @Test

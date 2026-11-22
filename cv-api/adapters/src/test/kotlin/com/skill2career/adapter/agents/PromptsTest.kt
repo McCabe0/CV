@@ -1,9 +1,9 @@
 package com.skill2career.adapter.agents
 
-import com.skill2career.application.cv.Fact
 import com.skill2career.domain.cv.Cv
 import com.skill2career.domain.cv.CvRole
 import com.skill2career.domain.profile.Contact
+import com.skill2career.domain.profile.Fact
 import com.skill2career.domain.profile.OwnerId
 import com.skill2career.domain.profile.Profile
 import com.skill2career.domain.profile.Skills
@@ -65,9 +65,10 @@ class PromptsTest {
     }
 
     @Test
-    fun `answers are only shown when there are some`() {
-        assertThat(Prompts.facts(emptyList())).isEmpty()
-        assertThat(Prompts.facts(listOf(Fact("Which team?", "Payments")))).isEqualTo("<answers>\nQ: Which team?\nA: Payments\n</answers>\n")
+    fun `the candidate's answers follow the profile, only when there are some`() {
+        assertThat(Prompts.profile(full)).doesNotContain("<answers>")
+        assertThat(Prompts.profile(full.withFacts(listOf(Fact("Which team?", "Payments")))))
+            .endsWith("</profile>\n<answers>\nQ: Which team?\nA: Payments\n</answers>\n")
     }
 
     @Test

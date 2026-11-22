@@ -28,13 +28,22 @@ class FindCvRequest(
     ): CvRequest = requests.findOwned(ownerId, id)
 }
 
-/** The candidate's answers to the interviewer. Any left out are skipped. */
+/**
+ * The candidate's answers to the interviewer. Any left out are skipped. Those given are saved to the
+ * profile too, so a later CV uses them. The profile is saved first: should saving the request then fail,
+ * answering again saves the same facts once more, which changes nothing.
+ */
 class AnswerQuestions(
     private val requests: CvRequestStore,
+    private val profiles: ProfileStore,
 ) {
     fun answer(
         ownerId: OwnerId,
         id: Long,
         answers: List<Answer>,
-    ): CvRequest = requests.save(requests.findOwned(ownerId, id).answered(answers))
+    ): CvRequest {
+        val answered = requests.findOwned(ownerId, id).answered(answers)
+        profiles.findByOwner(ownerId)?.let { profiles.save(it.withFacts(answered.facts())) }
+        return requests.save(answered)
+    }
 }

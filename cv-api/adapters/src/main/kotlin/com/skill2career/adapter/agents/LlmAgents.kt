@@ -47,8 +47,8 @@ class LlmInterviewer(
             strong CV needs that it does not say: a bullet with no number, a skill with no evidence of using
             it, a gap in the dates, a target role with no matching experience.
             Ask at most ${CvRequest.MAX_QUESTIONS} short questions, one thing each, that the candidate can
-            answer in a sentence. Never ask for what the profile already says. If it already says enough,
-            ask none.
+            answer in a sentence. Never ask for what the profile already says, or what the candidate has
+            already answered. If they already say enough, ask none.
             """.trimIndent()
     }
 }
@@ -63,7 +63,7 @@ class LlmWriter(
             "The writer",
             LlmRequest(
                 SYSTEM,
-                Prompts.profile(brief.profile) + Prompts.facts(brief.facts) + (brief.lastRound?.let(Prompts::feedback) ?: ""),
+                Prompts.profile(brief.profile) + (brief.lastRound?.let(Prompts::feedback) ?: ""),
                 Schema.cv,
             ),
             CvAnswer::class.java,
@@ -107,7 +107,7 @@ class LlmCritic(
             "The critic",
             LlmRequest(
                 SYSTEM,
-                Prompts.profile(brief.profile) + Prompts.facts(brief.facts) + "<draft>\n${Prompts.draft(draft)}</draft>\n",
+                Prompts.profile(brief.profile) + "<draft>\n${Prompts.draft(draft)}</draft>\n",
                 SCHEMA,
             ),
             Answer::class.java,

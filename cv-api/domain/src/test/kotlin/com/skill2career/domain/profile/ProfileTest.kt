@@ -29,6 +29,25 @@ class ProfileTest {
     }
 
     @Test
+    fun `keeps the candidate's answers as facts, a newer answer to the same question replacing the older`() {
+        val first = profile().withFacts(listOf(Fact("Which team?", "Payments"), Fact("By how much?", "30%")))
+
+        val updated = first.withFacts(listOf(Fact(" by how MUCH? ", "40%"), Fact("What stack?", "Kotlin")))
+
+        assertThat(updated.facts).containsExactly(
+            Fact("Which team?", "Payments"),
+            Fact(" by how MUCH? ", "40%"),
+            Fact("What stack?", "Kotlin"),
+        )
+    }
+
+    @Test
+    fun `a fact needs a question and an answer`() {
+        assertThatThrownBy { Fact(" ", "Yes") }.isInstanceOf(IllegalArgumentException::class.java)
+        assertThatThrownBy { Fact("Why?", " ") }.isInstanceOf(IllegalArgumentException::class.java)
+    }
+
+    @Test
     fun `an owner needs an id`() {
         assertThatThrownBy { OwnerId(" ") }.isInstanceOf(IllegalArgumentException::class.java)
     }

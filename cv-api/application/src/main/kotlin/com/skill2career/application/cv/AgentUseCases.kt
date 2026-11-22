@@ -39,14 +39,9 @@ class WriteCv(
         if (request.status != CvStatus.WRITING) return request
 
         val profile = profiles.findByOwner(request.ownerId) ?: return requests.save(request.failed(PROFILE_GONE))
-        val facts =
-            request.answers
-                .filterNot { it.skipped }
-                .map { answer -> Fact(request.questions.first { it.id == answer.questionId }.text, answer.text!!) }
-
         try {
             while (request.needsAnotherRound) {
-                val brief = Brief(profile, facts, request.rounds.lastOrNull())
+                val brief = Brief(profile, request.rounds.lastOrNull())
                 val draft = writer.write(brief)
                 val review = critic.review(brief, draft)
                 // Saved each round, so the candidate sees progress, and a restart carries on from here.

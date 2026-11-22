@@ -1,8 +1,10 @@
 package com.skill2career.adapter.persistence.profile
 
+import com.skill2career.adapter.persistence.FactsConverter
 import com.skill2career.adapter.persistence.StringListConverter
 import com.skill2career.adapter.persistence.WorkHistoryConverter
 import com.skill2career.domain.profile.Contact
+import com.skill2career.domain.profile.Fact
 import com.skill2career.domain.profile.OwnerId
 import com.skill2career.domain.profile.Profile
 import com.skill2career.domain.profile.Skills
@@ -48,6 +50,9 @@ class ProfileEntity(
     @Column(name = "work_history_json")
     @Convert(converter = WorkHistoryConverter::class)
     var workHistory: List<WorkExperience>,
+    @Column(name = "facts_json")
+    @Convert(converter = FactsConverter::class)
+    var facts: List<Fact>,
     var createdAt: Instant = Instant.now(),
     var updatedAt: Instant = Instant.now(),
 ) {
@@ -74,6 +79,7 @@ class ProfileEntity(
             languages = languages,
             contact = Contact(email = email, phone = phone, linkedin = linkedin, portfolio = portfolio),
             workHistory = workHistory,
+            facts = facts,
         )
 
     companion object {
@@ -97,6 +103,7 @@ class ProfileEntity(
                 linkedin = profile.contact.linkedin,
                 portfolio = profile.contact.portfolio,
                 workHistory = profile.workHistory,
+                facts = profile.facts,
             )
     }
 }

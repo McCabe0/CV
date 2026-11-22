@@ -1,7 +1,6 @@
 package com.skill2career.adapter.agents
 
 import com.skill2career.application.cv.Brief
-import com.skill2career.application.cv.Fact
 import com.skill2career.domain.cv.CvFixtures.cv
 import com.skill2career.domain.cv.CvFixtures.rejected
 import com.skill2career.domain.cv.CvRole
@@ -10,12 +9,14 @@ import com.skill2career.domain.cv.IssueKind
 import com.skill2career.domain.cv.Question
 import com.skill2career.domain.cv.Review
 import com.skill2career.domain.cv.Round
+import com.skill2career.domain.profile.Fact
 import com.skill2career.domain.profile.ProfileFixtures.profile
 import org.assertj.core.api.Assertions.assertThat
 import kotlin.test.Test
 
 class LlmAgentsTest {
-    private val brief = Brief(profile(), listOf(Fact("By how much did you cut settlement time?", "By 40%")))
+    private val answered = profile().withFacts(listOf(Fact("By how much did you cut settlement time?", "By 40%")))
+    private val brief = Brief(answered)
 
     private val cvJson =
         """
@@ -46,6 +47,17 @@ class LlmAgentsTest {
         assertThat(request.prompt).contains("Casey Candidate", "Backend Engineer", "Acme Payments", "Cut settlement time by 40%")
         assertThat(request.system).contains("at most 5")
         assertThat(request.schema["required"]).isEqualTo(listOf("questions"))
+    }
+
+    @Test
+    fun `the interviewer is shown the answers already given, so it does not ask again`() {
+        val llm = ScriptedLlm("""{"questions": []}""")
+
+        LlmInterviewer(llm).questionsFor(answered)
+
+        val request = llm.requests.single()
+        assertThat(request.prompt).contains("By how much did you cut settlement time?", "By 40%")
+        assertThat(request.system).contains("already answered")
     }
 
     @Test

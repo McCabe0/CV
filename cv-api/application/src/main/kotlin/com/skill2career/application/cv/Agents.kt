@@ -26,16 +26,9 @@ fun interface Critic {
     ): Review
 }
 
-/** Something the candidate told the interviewer: as much a fact for the CV as the profile. */
-data class Fact(
-    val question: String,
-    val answer: String,
-)
-
-/** Everything the writer and critic may use. Nothing else may appear on the CV. */
+/** Everything the writer and critic may use: the profile, with its facts. Nothing else may appear on the CV. */
 data class Brief(
     val profile: Profile,
-    val facts: List<Fact>,
     val lastRound: Round? = null,
 )
 

@@ -1,24 +1,53 @@
 package com.skill2career.adapter.persistence
 
+import com.skill2career.domain.cv.Answer
+import com.skill2career.domain.cv.Cv
+import com.skill2career.domain.cv.Question
+import com.skill2career.domain.cv.Round
+import com.skill2career.domain.profile.Fact
 import com.skill2career.domain.profile.WorkExperience
 import jakarta.persistence.AttributeConverter
 import jakarta.persistence.Converter
-import tools.jackson.module.kotlin.jacksonObjectMapper
-import tools.jackson.module.kotlin.readValue
+import tools.jackson.core.type.TypeReference
+import tools.jackson.databind.DeserializationFeature
+import tools.jackson.databind.json.JsonMapper
+import tools.jackson.module.kotlin.KotlinModule
 
-private val json = jacksonObjectMapper()
+// Values the domain derives, eg a review's approval, are written too, but ignored when read back.
+private val json =
+    JsonMapper
+        .builder()
+        .addModule(KotlinModule.Builder().build())
+        .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+        .build()
 
-/** A list of strings as a json array, in a text column. */
-@Converter
-class StringListConverter : AttributeConverter<List<String>, String> {
-    override fun convertToDatabaseColumn(attribute: List<String>): String = json.writeValueAsString(attribute)
+/** A value as json, in a text column. */
+abstract class JsonConverter<T : Any>(
+    private val type: TypeReference<T>,
+) : AttributeConverter<T, String> {
+    override fun convertToDatabaseColumn(attribute: T?): String? = attribute?.let(json::writeValueAsString)
 
-    override fun convertToEntityAttribute(dbData: String): List<String> = json.readValue(dbData)
+    override fun convertToEntityAttribute(dbData: String?): T? = dbData?.let { json.readValue(it, type) }
 }
 
+/** A list of strings as a json array. */
 @Converter
-class WorkHistoryConverter : AttributeConverter<List<WorkExperience>, String> {
-    override fun convertToDatabaseColumn(attribute: List<WorkExperience>): String = json.writeValueAsString(attribute)
+class StringListConverter : JsonConverter<List<String>>(object : TypeReference<List<String>>() {})
 
-    override fun convertToEntityAttribute(dbData: String): List<WorkExperience> = json.readValue(dbData)
-}
+@Converter
+class WorkHistoryConverter : JsonConverter<List<WorkExperience>>(object : TypeReference<List<WorkExperience>>() {})
+
+@Converter
+class FactsConverter : JsonConverter<List<Fact>>(object : TypeReference<List<Fact>>() {})
+
+@Converter
+class QuestionsConverter : JsonConverter<List<Question>>(object : TypeReference<List<Question>>() {})
+
+@Converter
+class AnswersConverter : JsonConverter<List<Answer>>(object : TypeReference<List<Answer>>() {})
+
+@Converter
+class RoundsConverter : JsonConverter<List<Round>>(object : TypeReference<List<Round>>() {})
+
+@Converter
+class CvConverter : JsonConverter<Cv>(object : TypeReference<Cv>() {})
