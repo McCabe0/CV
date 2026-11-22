@@ -1,15 +1,34 @@
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { authConfig } from './config'
-import { getSession, requireSession } from './server'
+import { getSession, redirectInZone, requireSession } from './server'
 import { sealSession, SESSION_COOKIE, type Session } from './session'
 
-jest.mock('next/headers', () => ({ cookies: jest.fn() }))
+jest.mock('next/headers', () => ({ cookies: jest.fn(), headers: jest.fn() }))
 jest.mock('next/navigation', () => ({
-  redirect: jest.fn(() => {
-    throw new Error('NEXT_REDIRECT')
+  redirect: jest.fn((url: string) => {
+    throw new Error(`NEXT_REDIRECT ${url}`)
   }),
 }))
+
+describe('redirectInZone', () => {
+  const withHeaders = (entries: Record<string, string>) =>
+    jest.mocked(headers).mockResolvedValue(new Headers(entries) as never)
+
+  it('leaves the base path to next when javascript sent the form, as next adds it', async () => {
+    withHeaders({ 'next-action': 'abc123' })
+
+    await expect(redirectInZone('/cv', '/requests/7')).rejects.toThrow('NEXT_REDIRECT /requests/7')
+  })
+
+  it('adds the base path when the browser sent the form without javascript, as next does not', async () => {
+    withHeaders({ 'content-type': 'application/x-www-form-urlencoded' })
+
+    await expect(redirectInZone('/cv', '/requests/7')).rejects.toThrow(
+      'NEXT_REDIRECT /cv/requests/7',
+    )
+  })
+})
 
 const config = authConfig({
   KEYCLOAK_ISSUER: 'https://id.example.com/realms/skill2career',

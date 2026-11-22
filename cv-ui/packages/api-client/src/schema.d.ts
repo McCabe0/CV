@@ -28,6 +28,86 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/cv-requests/{id}/answers': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    /**
+     * Answer the interviewer
+     * @description Any question left out is skipped. The writing then begins.
+     */
+    put: operations['answer']
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/cv-requests': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Ask for a CV
+     * @description 409 until you have saved a profile. Follow it at its Location.
+     */
+    post: operations['request']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/cv-requests/{id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * A CV request as it stands
+     * @description For a client that cannot stream, or reconnects.
+     */
+    get: operations['find_1']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/cv-requests/{id}/events': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Follow a CV request
+     * @description Server sent events, each named progress, each the whole request. Ends once it is completed or failed.
+     */
+    get: operations['events']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
 }
 export type webhooks = Record<string, never>
 export interface components {
@@ -50,15 +130,15 @@ export interface components {
       yearsOfExperience?: string | null
       location?: string | null
       workAuthorization?: string | null
-      projects?: string[]
-      certifications?: string[]
-      languages?: string[]
+      projects: string[]
+      certifications: string[]
+      languages: string[]
       /** Format: email */
       email?: string | null
       phone?: string | null
       linkedin?: string | null
       portfolio?: string | null
-      workHistory?: components['schemas']['WorkExperienceRequest'][]
+      workHistory: components['schemas']['WorkExperienceRequest'][]
     }
     /** @description A role the candidate has held. */
     WorkExperienceRequest: {
@@ -68,34 +148,103 @@ export interface components {
       startDate?: string | null
       /** @description Empty while the role is current. */
       endDate?: string | null
-      bullets?: string[]
+      bullets: string[]
     }
     ProfileResponse: {
       /** Format: int64 */
-      id?: number
-      name?: string
-      skills?: string[]
-      experience?: string
-      education?: string
+      id: number
+      name: string
+      skills: string[]
+      experience: string
+      education: string
       targetRole?: string | null
       yearsOfExperience?: string | null
       location?: string | null
       workAuthorization?: string | null
-      projects?: string[]
-      certifications?: string[]
-      languages?: string[]
+      projects: string[]
+      certifications: string[]
+      languages: string[]
       email?: string | null
       phone?: string | null
       linkedin?: string | null
       portfolio?: string | null
-      workHistory?: components['schemas']['WorkExperience'][]
+      workHistory: components['schemas']['WorkExperience'][]
     }
     WorkExperience: {
-      company?: string
-      title?: string
+      company: string
+      title: string
       startDate?: string | null
       endDate?: string | null
-      bullets?: string[]
+      bullets: string[]
+    }
+    AnswerRequest: {
+      /** Format: int32 */
+      questionId: number
+      /** @description Leave out, or empty, to skip the question. */
+      text?: string | null
+    }
+    /** @description The candidate's answers. A question left out is skipped. */
+    AnswersRequest: {
+      answers: components['schemas']['AnswerRequest'][]
+    }
+    AnswerResponse: {
+      /** Format: int32 */
+      questionId: number
+      /** @description Empty when skipped. */
+      text?: string | null
+    }
+    Cv: {
+      summary: string
+      skills: string[]
+      roles: components['schemas']['CvRole'][]
+      education: string[]
+      projects: string[]
+      certifications: string[]
+      languages: string[]
+    }
+    /** @description A CV request: the interviewer's questions, each round, and the finished CV once completed. */
+    CvRequestResponse: {
+      /** Format: int64 */
+      id: number
+      /** @enum {string} */
+      status: 'REQUESTED' | 'AWAITING_ANSWERS' | 'WRITING' | 'COMPLETED' | 'FAILED'
+      questions: components['schemas']['QuestionResponse'][]
+      answers: components['schemas']['AnswerResponse'][]
+      rounds: components['schemas']['RoundResponse'][]
+      /** @description Only once completed. */
+      cv?: components['schemas']['Cv'] | null
+      /** @description Only once failed: why. */
+      failure?: string | null
+    }
+    CvRole: {
+      title: string
+      company: string
+      dates?: string | null
+      bullets: string[]
+    }
+    Issue: {
+      /** @enum {string} */
+      kind: 'INVENTED_FACT' | 'NO_IMPACT' | 'MISSING_KEYWORD' | 'GENERIC_SUMMARY' | 'OTHER'
+      detail: string
+    }
+    QuestionResponse: {
+      /** Format: int32 */
+      id: number
+      text: string
+    }
+    /** @description One turn of the writer and the critic: the critic's review, and the draft's summary. */
+    RoundResponse: {
+      /** Format: int32 */
+      number: number
+      /** Format: int32 */
+      score: number
+      approved: boolean
+      issues: components['schemas']['Issue'][]
+      summary: string
+    }
+    SseEmitter: {
+      /** Format: int64 */
+      timeout?: number
     }
   }
   responses: never
@@ -146,6 +295,96 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['ProfileResponse']
+        }
+      }
+    }
+  }
+  answer: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: number
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AnswersRequest']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CvRequestResponse']
+        }
+      }
+    }
+  }
+  request: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CvRequestResponse']
+        }
+      }
+    }
+  }
+  find_1: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: number
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CvRequestResponse']
+        }
+      }
+    }
+  }
+  events: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: number
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'text/event-stream': components['schemas']['SseEmitter']
         }
       }
     }

@@ -14,7 +14,7 @@ describe('shell proxy', () => {
 
   beforeEach(() => {
     jest.mocked(sessionProxy).mockResolvedValue(NextResponse.next())
-    process.env = { ...env, PROFILE_URL: 'http://profile:3001' }
+    process.env = { ...env, PROFILE_URL: 'http://profile:3001', CV_URL: 'http://cv:3002' }
   })
 
   afterAll(() => {
@@ -27,6 +27,19 @@ describe('shell proxy', () => {
     ['/profile/_next/static/app.js', 'http://profile:3001/profile/_next/static/app.js'],
   ])('routes %s to the profile zone', async (path, expected) => {
     expect(await rewrittenTo(proxy(request(path)))).toBe(expected)
+  })
+
+  it.each([
+    ['/cv', 'http://cv:3002/cv'],
+    ['/cv/requests/7/events', 'http://cv:3002/cv/requests/7/events'],
+  ])('routes %s to the cv zone', async (path, expected) => {
+    expect(await rewrittenTo(proxy(request(path)))).toBe(expected)
+  })
+
+  it('defaults the cv zone to its local dev port', async () => {
+    delete process.env.CV_URL
+
+    expect(await rewrittenTo(proxy(request('/cv')))).toBe('http://localhost:3002/cv')
   })
 
   it('reads the zone url when the request is made, so one image works in every environment', async () => {
@@ -43,6 +56,7 @@ describe('shell proxy', () => {
 
   it('does not mistake a path that only starts like a zone for it', async () => {
     expect(await rewrittenTo(proxy(request('/profiles')))).toBeNull()
+    expect(await rewrittenTo(proxy(request('/cvs')))).toBeNull()
   })
 
   it('leaves zone sessions to the zone, which refreshes them itself', async () => {

@@ -1,0 +1,10 @@
+.form {
+  max-width: 40rem;
+  margin-bottom: var(--space-4);
+}
+
+.problem {
+  padding: var(--space-2);
+  border-left: 4px solid var(--color-error);
+  background: var(--color-surface);
+}

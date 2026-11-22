@@ -5,9 +5,10 @@ import { sessionProxy } from '@cv/auth/proxy'
 // (next.config rewrites are fixed at build time), so the zone urls come from the runtime environment.
 const zones = {
   profile: () => process.env.PROFILE_URL ?? 'http://localhost:3001',
+  cv: () => process.env.CV_URL ?? 'http://localhost:3002',
 }
 
-const zonePath = /^\/(profile)(\/|$)/
+const zonePath = /^\/(profile|cv)(\/|$)/
 
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl

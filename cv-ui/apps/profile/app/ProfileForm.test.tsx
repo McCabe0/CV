@@ -90,10 +90,12 @@ describe('ProfileForm', () => {
     ).toBeInTheDocument()
   })
 
-  it('says when the profile was saved', () => {
+  it('says when the profile was saved, and offers the next step, a CV', () => {
     renderForm({ ...initial, saved: true })
 
     expect(screen.getByRole('status')).toHaveTextContent('Your profile has been saved.')
+    // The cv zone is another zone, so a plain link.
+    expect(screen.getByRole('link', { name: 'Write your CV' })).toHaveAttribute('href', '/cv')
   })
 
   it('has no detectable accessibility violations, with errors or without', async () => {

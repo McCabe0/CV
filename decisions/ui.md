@@ -9,8 +9,8 @@ The first ui is one vite page with no tests. It is rebuilt, as the digital-resol
 | zone | for |
 |---|---|
 | `shell` | sign in, routing, the header |
-| `profile` | the user's details, and the interviewer's questions |
-| `cv` | the writer and critic at work, the finished CV, and its pdf |
+| `profile` | the user's details |
+| `cv` | a CV request: the interviewer's questions, the writer and critic at work, the finished CV, and its pdf. One page per request, that changes with its status (decided 2026-11-22) |
 | `jobs` | matched jobs, each linking to the company's own page |
 | `admin` | tracked companies and crawl health. ADMIN role only |
 

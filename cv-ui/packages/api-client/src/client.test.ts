@@ -27,18 +27,22 @@ describe('apiClient', () => {
   it('sends the typed body as json', async () => {
     const fetch = respondWith({})
 
-    await apiClient('access-token', { fetch }).PUT('/profile', {
-      body: { name: 'Casey', skills: ['Kotlin'], experience: 'Lots', education: 'Some' },
-    })
-
-    const request = fetch.mock.calls[0]![0]
-    expect(request.method).toBe('PUT')
-    expect(await request.json()).toEqual({
+    const body = {
       name: 'Casey',
       skills: ['Kotlin'],
       experience: 'Lots',
       education: 'Some',
-    })
+      projects: [],
+      certifications: [],
+      languages: [],
+      workHistory: [],
+    }
+
+    await apiClient('access-token', { fetch }).PUT('/profile', { body })
+
+    const request = fetch.mock.calls[0]![0]
+    expect(request.method).toBe('PUT')
+    expect(await request.json()).toEqual(body)
   })
 
   it("returns the api's problem as the error", async () => {

@@ -201,6 +201,8 @@ export function validate(values: ProfileValues): Validation {
       ...optional('phone'),
       ...optional('linkedin'),
       ...optional('portfolio'),
+      // The form has no work history yet; the api's default is this same empty list.
+      workHistory: [],
     },
   }
 }

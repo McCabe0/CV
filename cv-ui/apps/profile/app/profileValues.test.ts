@@ -35,6 +35,7 @@ describe('validate', () => {
         projects: [],
         certifications: [],
         languages: [],
+        workHistory: [],
       },
     })
   })

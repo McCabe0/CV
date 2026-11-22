@@ -11,6 +11,12 @@ export default defineConfig([
   {
     settings: { next: { rootDir: ['apps/*/'] } },
   },
+  {
+    // A form action takes (state, data) whatever it needs; an underscore marks one left unused on purpose.
+    rules: {
+      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+    },
+  },
   globalIgnores([
     '**/node_modules/**',
     '**/.next/**',

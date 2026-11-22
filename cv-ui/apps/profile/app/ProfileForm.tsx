@@ -42,7 +42,8 @@ export function ProfileForm({ initialState, action }: Props) {
       <ErrorSummary errors={errorList} />
       {state.saved && (
         <p role="status" className={styles.saved}>
-          Your profile has been saved.
+          Your profile has been saved. {/* The cv zone is another zone, so a plain link. */}
+          <a href="/cv">Write your CV</a>
         </p>
       )}
 

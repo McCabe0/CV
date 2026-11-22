@@ -26,7 +26,9 @@ test('a candidate saves their profile, and it is there when they come back', asy
   await field(page, 'Email address (optional)').fill('casey@example.com')
   await page.getByRole('button', { name: 'Save profile' }).click()
 
-  await expect(page.getByRole('status')).toHaveText('Your profile has been saved.')
+  const saved = page.getByRole('status')
+  await expect(saved).toContainText('Your profile has been saved.')
+  await expect(saved.getByRole('link', { name: 'Write your CV' })).toHaveAttribute('href', '/cv')
   // The api keeps a skill given twice once, and the form shows what was kept.
   await expect(field(page, 'Skills')).toHaveValue('Kotlin, SQL')
   await expectAccessible(page)

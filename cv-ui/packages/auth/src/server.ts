@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { authConfig, type AuthConfig } from './config'
 import { SESSION_COOKIE, unsealSession, type Session } from './session'
@@ -20,4 +20,16 @@ export async function requireSession(returnTo: string, config?: AuthConfig): Pro
     redirect(`${login.href}?returnTo=${encodeURIComponent(returnTo)}`)
   }
   return session
+}
+
+/**
+ * Redirects from a server action to a page in this zone, eg `redirectInZone('/cv', '/requests/7')`.
+ *
+ * Next adds the zone's base path to an action's redirect when javascript sent the form, but not when the
+ * browser posted it without javascript, so the user would land outside the zone. Next marks a javascript
+ * call with the `next-action` header, so the base path is only added without it.
+ */
+export async function redirectInZone(basePath: string, path: string): Promise<never> {
+  const sentByJavascript = (await headers()).has('next-action')
+  redirect(sentByJavascript ? path : `${basePath}${path}`)
 }
