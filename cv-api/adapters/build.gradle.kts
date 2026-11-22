@@ -35,7 +35,7 @@ dependencies {
 
     // The LLMs behind the CV agents. Claude through its official sdk; Gemini over http with spring's
     // RestClient. See decisions/agents.md.
-    implementation("com.anthropic:anthropic-java:3.3.0")
+    implementation("com.anthropic:anthropic-java:3.11.0")
 
     // The outbox relay and the cv-worker's listener. See decisions/messaging.md.
     api("org.springframework.boot:spring-boot-starter-kafka")

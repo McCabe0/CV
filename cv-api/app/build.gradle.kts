@@ -19,8 +19,8 @@ dependencies {
 
     implementation("org.springframework.boot:spring-boot-starter-opentelemetry")
     // The release built for the opentelemetry sdk that spring boot manages. See decisions/observability.md.
-    implementation("io.opentelemetry.instrumentation:opentelemetry-logback-appender-1.0:2.28.1-alpha")
-    implementation("net.ttddyy.observation:datasource-micrometer-spring-boot:2.3.0")
+    implementation("io.opentelemetry.instrumentation:opentelemetry-logback-appender-1.0:2.34.0-alpha")
+    implementation("net.ttddyy.observation:datasource-micrometer-spring-boot:2.3.1")
 
     testImplementation(testFixtures(project(":domain")))
     testImplementation("org.springframework.boot:spring-boot-starter-test")
