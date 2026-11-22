@@ -40,9 +40,12 @@ to the streams it holds. No shared cache is needed.
 - `cv.requested` carries `{eventId, requestId}`, keyed by the request. The cv-worker takes one message at
   a time (`max.poll.records: 1`, `max.poll.interval.ms` 15 minutes), as a CV can take minutes.
 - an error retries the message on ONE `cv.requested.retry` topic, 30s apart, 4 tries in all
-  (`cv.worker.attempts`, `cv.worker.retry-delay-ms`), then parks it on `cv.requested.dlq`. A request that
-  does not exist goes there at once. A parked request is left as it was, so replaying its message carries
-  on from there.
+  (`cv.worker.attempts`, `cv.worker.retry-delay-ms`), each failed try logged with its reason, then parks
+  it on `cv.requested.dlq`. A request that does not exist goes there at once. A parked request is failed,
+  with "Our writing service is busy right now. Please try again in a few minutes.", and keeps the rounds
+  it got to: the candidate is told, and asks again, rather than waiting on a request that will not move.
+  Replaying a parked message does nothing to a failed request. (Decided 2026-11-22, after Gemini's free
+  tier answered 503, high demand, through every retry; it replaced leaving the request as it was.)
 - an agent's unusable answer is not an error to retry: the request fails, with the reason saved.
 - every save of a CV request writes a `cv.progress` message, in the same transaction: any change is
   progress. The message is only the request id; the api reads the request, so each event is its whole

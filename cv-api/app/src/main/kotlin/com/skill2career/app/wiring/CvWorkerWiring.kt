@@ -12,6 +12,7 @@ import com.skill2career.app.role.ConditionalOnRole
 import com.skill2career.application.cv.AdvanceCvRequest
 import com.skill2career.application.cv.Critic
 import com.skill2career.application.cv.CvRequestStore
+import com.skill2career.application.cv.GiveUpOnCvRequest
 import com.skill2career.application.cv.InterviewCandidate
 import com.skill2career.application.cv.Interviewer
 import com.skill2career.application.cv.WriteCv
@@ -60,4 +61,7 @@ class CvWorkerWiring {
         interview: InterviewCandidate,
         write: WriteCv,
     ): AdvanceCvRequest = AdvanceCvRequest(interview, write)
+
+    @Bean
+    fun giveUpOnCvRequest(requests: CvRequestStore): GiveUpOnCvRequest = GiveUpOnCvRequest(requests)
 }

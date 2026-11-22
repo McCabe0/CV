@@ -169,14 +169,16 @@ class CvPipelineIntegrationTest : KeycloakIntegrationBase() {
     }
 
     @Test
-    fun `work the LLM cannot do is retried, then parked on the dead letter topic, the request left as it was`() {
+    fun `work the LLM cannot do is retried, then parked on the dead letter topic, and the candidate told to try again`() {
         gemini.stubFor(post(urlPathMatching("/v1beta/.*")).willReturn(aResponse().withStatus(503)))
 
         val id = requestCv.request(candidate()).id!!
 
         val parked = deadLetters().poll { it.key() == id.toString() }
         assertThat(parked).isNotNull()
-        assertThat(statusOf(id)).isEqualTo(CvStatus.REQUESTED)
+        waitFor(id, CvStatus.FAILED)
+        assertThat(requests.find(id)!!.failure)
+            .isEqualTo("Our writing service is busy right now. Please try again in a few minutes.")
     }
 
     /** A consumer of cv.requested.dlq, read from the start. */

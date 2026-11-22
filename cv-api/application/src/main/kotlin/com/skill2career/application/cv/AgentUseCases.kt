@@ -68,4 +68,23 @@ class AdvanceCvRequest(
     }
 }
 
+/**
+ * The work could not be done, after every retry, eg the LLM was overloaded throughout. Rather than leave
+ * the candidate waiting on a request that will never move, it fails, with a reason they can act on: they
+ * ask again later. The rounds already written are kept. See decisions/messaging.md.
+ */
+class GiveUpOnCvRequest(
+    private val requests: CvRequestStore,
+) {
+    fun giveUp(id: Long): CvRequest? {
+        val request = requests.find(id) ?: return null
+        if (request.status == CvStatus.COMPLETED || request.status == CvStatus.FAILED) return request
+        return requests.save(request.failed(BUSY))
+    }
+
+    private companion object {
+        const val BUSY = "Our writing service is busy right now. Please try again in a few minutes."
+    }
+}
+
 private const val PROFILE_GONE = "The profile was deleted"

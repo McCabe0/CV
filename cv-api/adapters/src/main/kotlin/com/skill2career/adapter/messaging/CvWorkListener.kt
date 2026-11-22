@@ -2,6 +2,7 @@ package com.skill2career.adapter.messaging
 
 import com.skill2career.application.cv.AdvanceCvRequest
 import com.skill2career.application.cv.CvRequestNotFound
+import com.skill2career.application.cv.GiveUpOnCvRequest
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
@@ -28,15 +29,17 @@ class ProcessedEventEntity(
 interface ProcessedEventRepo : JpaRepository<ProcessedEventEntity, UUID>
 
 /**
- * The cv-worker: takes each queued request as far as it can go. An error, eg the LLM being down, retries
- * the message on `cv.requested.retry`, after a delay, then parks it on `cv.requested.dlq`, where it can be
- * seen and replayed. A request that does not exist goes straight there: retrying will not make it.
- * See decisions/messaging.md.
+ * The cv-worker: takes each queued request as far as it can go. An error, eg the LLM being down, is
+ * logged, and retries the message on `cv.requested.retry`, after a delay. After the last try the message
+ * is parked on `cv.requested.dlq`, where it can be seen, and the request fails, so the candidate is told
+ * to try again rather than left waiting. A request that does not exist goes straight there: retrying will
+ * not make it. See decisions/messaging.md.
  */
 @Component
 class CvWorkListener(
     private val advance: AdvanceCvRequest,
     private val processed: ProcessedEventRepo,
+    private val giveUp: GiveUpOnCvRequest,
 ) {
     @RetryableTopic(
         attempts = "\${cv.worker.attempts:4}",
@@ -50,14 +53,25 @@ class CvWorkListener(
     fun onWork(payload: String) {
         val message = RequestMessage.read(payload)
         if (processed.existsById(message.eventId)) return
-        advance.advance(message.requestId)
+        try {
+            advance.advance(message.requestId)
+        } catch (failure: Exception) {
+            log.warn("CV request {} could not be advanced, it will be retried: {}", message.requestId, failure.message)
+            throw failure
+        }
         processed.save(ProcessedEventEntity(message.eventId))
     }
 
-    /** The request is left as it was, so replaying the message carries on from there. */
+    /** Every try failed: the request fails too, with a reason the candidate can act on. */
     @DltHandler
     fun parked(payload: String) {
-        log.error("CV request work parked on {}.dlq, for someone to look at and replay: {}", Topics.CV_REQUESTED, payload)
+        val message = RequestMessage.read(payload)
+        log.error(
+            "CV request {} parked on {}.dlq after its last try; it is failed for the candidate to ask again",
+            message.requestId,
+            Topics.CV_REQUESTED,
+        )
+        giveUp.giveUp(message.requestId)
     }
 
     private companion object {
