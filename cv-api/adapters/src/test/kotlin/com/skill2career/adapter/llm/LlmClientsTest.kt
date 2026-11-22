@@ -45,4 +45,32 @@ class LlmClientsTest {
 
         assertThat(LlmClients.claudeSettings(properties).model).isEqualTo("claude-opus-5-5")
     }
+
+    @Test
+    fun `without a model or address, each provider's own are used`() {
+        val gemini = LlmClients.geminiSettings(LlmProperties(gemini = LlmProperties.Provider(apiKey = "key")))
+        val claude = LlmClients.claudeSettings(LlmProperties(claude = LlmProperties.Provider(apiKey = "key")))
+
+        assertThat(gemini).isEqualTo(GeminiSettings(apiKey = "key"))
+        assertThat(claude).isEqualTo(ClaudeSettings(apiKey = "key"))
+    }
+
+    @Test
+    fun `claude's model and address can be set too`() {
+        val properties =
+            LlmProperties(
+                provider = LlmProperties.Name.CLAUDE,
+                model = "claude-sonnet-5-5",
+                claude = LlmProperties.Provider(apiKey = "key", baseUrl = "http://localhost:9"),
+            )
+
+        assertThat(LlmClients.claudeSettings(properties))
+            .isEqualTo(ClaudeSettings(apiKey = "key", model = "claude-sonnet-5-5", baseUrl = "http://localhost:9"))
+    }
+
+    @Test
+    fun `a blank key is no key`() {
+        assertThatThrownBy { LlmClients.create(LlmProperties(gemini = LlmProperties.Provider(apiKey = " "))) }
+            .hasMessageContaining("GEMINI_API_KEY")
+    }
 }

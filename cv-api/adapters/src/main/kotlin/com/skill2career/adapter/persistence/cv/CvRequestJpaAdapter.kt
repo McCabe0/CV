@@ -2,7 +2,7 @@ package com.skill2career.adapter.persistence.cv
 
 import com.skill2career.adapter.messaging.OutboxEntity
 import com.skill2career.adapter.messaging.OutboxRepo
-import com.skill2career.adapter.messaging.WorkMessage
+import com.skill2career.adapter.messaging.RequestMessage
 import com.skill2career.adapter.persistence.AnswersConverter
 import com.skill2career.adapter.persistence.CvConverter
 import com.skill2career.adapter.persistence.QuestionsConverter
@@ -93,7 +93,10 @@ class CvRequestEntity(
 
 interface CvRequestJpaRepo : JpaRepository<CvRequestEntity, Long>
 
-/** The [CvRequestStore] port, on postgres. Work for the cv-worker goes in the outbox, in the same transaction. */
+/**
+ * The [CvRequestStore] port, on postgres. In the same transaction as each save, the outbox gets the save
+ * as progress (any change to a request is progress a candidate may be watching), and the work, if queued.
+ */
 @Repository
 @Transactional
 class CvRequestJpaAdapter(
@@ -107,7 +110,8 @@ class CvRequestJpaAdapter(
         val entity = CvRequestEntity.of(request)
         request.id?.let { id -> repo.findById(id).ifPresent { entity.createdAt = it.createdAt } }
         val saved = repo.save(entity).toDomain()
-        if (queueWork) outbox.save(OutboxEntity.work(WorkMessage(UUID.randomUUID(), saved.id!!)))
+        if (queueWork) outbox.save(OutboxEntity.work(RequestMessage(UUID.randomUUID(), saved.id!!)))
+        outbox.save(OutboxEntity.progress(RequestMessage(UUID.randomUUID(), saved.id!!)))
         return saved
     }
 

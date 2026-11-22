@@ -1,8 +1,8 @@
 package com.skill2career.adapter.persistence.cv
 
 import com.skill2career.adapter.messaging.OutboxRepo
+import com.skill2career.adapter.messaging.RequestMessage
 import com.skill2career.adapter.messaging.Topics
-import com.skill2career.adapter.messaging.WorkMessage
 import com.skill2career.adapter.persistence.PostgresTest
 import com.skill2career.domain.cv.Answer
 import com.skill2career.domain.cv.CvFixtures.awaitingAnswers
@@ -41,18 +41,28 @@ class CvRequestJpaAdapterTest : PostgresTest() {
     fun `queues work for the cv-worker in the outbox, in the same save`() {
         val saved = adapter.save(CvRequest.requested(OWNER), queueWork = true)
 
-        val queued = outbox.findAll().single()
-        assertThat(queued.topic).isEqualTo(Topics.CV_REQUESTED)
+        val queued = outbox.findAll().single { it.topic == Topics.CV_REQUESTED }
         assertThat(queued.messageKey).isEqualTo(saved.id.toString())
-        assertThat(WorkMessage.read(queued.payload)).isEqualTo(WorkMessage(queued.eventId, saved.id!!))
+        assertThat(RequestMessage.read(queued.payload)).isEqualTo(RequestMessage(queued.eventId, saved.id!!))
         assertThat(queued.sentAt).isNull()
     }
 
     @Test
-    fun `queues nothing for a plain save`() {
+    fun `queues no work for a plain save`() {
         adapter.save(CvRequest.requested(OWNER))
 
-        assertThat(outbox.count()).isZero()
+        assertThat(outbox.findAll().map { it.topic }).doesNotContain(Topics.CV_REQUESTED)
+    }
+
+    @Test
+    fun `announces every save as progress, keyed by the request, so a stream can show it`() {
+        val requested = adapter.save(CvRequest.requested(OWNER))
+        adapter.save(requested.asked(listOf(question(1))))
+
+        val progress = outbox.findAll().filter { it.topic == Topics.CV_PROGRESS }
+        assertThat(progress).hasSize(2)
+        assertThat(progress.map { it.messageKey }.toSet()).containsExactly(requested.id.toString())
+        assertThat(RequestMessage.read(progress.last().payload).requestId).isEqualTo(requested.id)
     }
 
     @Test

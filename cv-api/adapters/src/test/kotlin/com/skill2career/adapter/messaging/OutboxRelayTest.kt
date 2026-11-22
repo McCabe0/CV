@@ -23,7 +23,7 @@ class OutboxRelayTest : PostgresTest() {
     private val kafka = mock<KafkaTemplate<String, String>>()
     private val relay by lazy { OutboxRelay(outbox, kafka) }
 
-    private fun queue(requestId: Long): OutboxEntity = outbox.save(OutboxEntity.work(WorkMessage(UUID.randomUUID(), requestId)))
+    private fun queue(requestId: Long): OutboxEntity = outbox.save(OutboxEntity.work(RequestMessage(UUID.randomUUID(), requestId)))
 
     private fun kafkaAccepts() {
         whenever(kafka.send(any<String>(), any<String>(), any<String>())) doReturn

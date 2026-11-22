@@ -34,7 +34,7 @@ event. So every api instance reads `cv.progress` with a consumer group of its ow
 to the streams it holds. No shared cache is needed.
 
 ## as built (slice 3)
-- the api writes the outbox, so it runs the relay: every 500ms, the oldest unsent rows, `FOR UPDATE SKIP
+- the api and the cv-worker both write the outbox, so every role runs the relay: every 500ms, the oldest unsent rows, `FOR UPDATE SKIP
   LOCKED`, so several api instances never send the same row at once. A send kafka refuses stops the run;
   it and the rows after it go next time, in order.
 - `cv.requested` carries `{eventId, requestId}`, keyed by the request. The cv-worker takes one message at
@@ -44,4 +44,9 @@ to the streams it holds. No shared cache is needed.
   does not exist goes there at once. A parked request is left as it was, so replaying its message carries
   on from there.
 - an agent's unusable answer is not an error to retry: the request fails, with the reason saved.
-- `cv.progress` comes with the event stream, in stage 4.
+- every save of a CV request writes a `cv.progress` message, in the same transaction: any change is
+  progress. The message is only the request id; the api reads the request, so each event is its whole
+  state, and a missed one loses nothing. A stream opened later gets the state when it opens, so the
+  progress listener reads only new messages (`auto.offset.reset=latest`), one group per api instance.
+- `GET /api/cv-requests/{id}/events` ends once the request is completed or failed, and after 15 minutes;
+  a browser still there reconnects.

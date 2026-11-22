@@ -21,19 +21,26 @@ import java.util.concurrent.TimeUnit
 object Topics {
     /** A CV request for the cv-worker to take as far as it can. Keyed by the request, so its messages stay in order. */
     const val CV_REQUESTED = "cv.requested"
+
+    /** A CV request changed: every api instance passes it to the progress streams it holds. */
+    const val CV_PROGRESS = "cv.progress"
 }
 
 private val json = JsonMapper.builder().addModule(KotlinModule.Builder().build()).build()
 
-/** The message on [Topics.CV_REQUESTED]. Its event id lets a consumer tell a message delivered twice. */
-data class WorkMessage(
+/**
+ * A message about one CV request, on [Topics.CV_REQUESTED] or [Topics.CV_PROGRESS]. Only its id: a
+ * consumer reads the request itself, so it always acts on its latest state. The event id lets a consumer
+ * tell a message delivered twice.
+ */
+data class RequestMessage(
     val eventId: UUID,
     val requestId: Long,
 ) {
     fun write(): String = json.writeValueAsString(this)
 
     companion object {
-        fun read(payload: String): WorkMessage = json.readValue(payload, WorkMessage::class.java)
+        fun read(payload: String): RequestMessage = json.readValue(payload, RequestMessage::class.java)
     }
 }
 
@@ -52,13 +59,19 @@ class OutboxEntity(
     var sentAt: Instant? = null,
 ) {
     companion object {
-        fun work(message: WorkMessage) =
-            OutboxEntity(
-                eventId = message.eventId,
-                topic = Topics.CV_REQUESTED,
-                messageKey = message.requestId.toString(),
-                payload = message.write(),
-            )
+        fun work(message: RequestMessage) = of(Topics.CV_REQUESTED, message)
+
+        fun progress(message: RequestMessage) = of(Topics.CV_PROGRESS, message)
+
+        private fun of(
+            topic: String,
+            message: RequestMessage,
+        ) = OutboxEntity(
+            eventId = message.eventId,
+            topic = topic,
+            messageKey = message.requestId.toString(),
+            payload = message.write(),
+        )
     }
 }
 

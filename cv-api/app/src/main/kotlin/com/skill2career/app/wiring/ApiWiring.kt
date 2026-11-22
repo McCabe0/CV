@@ -1,7 +1,9 @@
 package com.skill2career.app.wiring
 
-import com.skill2career.adapter.messaging.OutboxRelay
+import com.skill2career.adapter.messaging.CvProgressListener
 import com.skill2career.adapter.web.ApiExceptionHandler
+import com.skill2career.adapter.web.cv.CvRequestResource
+import com.skill2career.adapter.web.cv.ProgressStreams
 import com.skill2career.adapter.web.profile.ProfileResource
 import com.skill2career.app.role.AppRole
 import com.skill2career.app.role.ConditionalOnRole
@@ -15,17 +17,20 @@ import com.skill2career.application.profile.SaveProfile
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
-import org.springframework.scheduling.annotation.EnableScheduling
-import org.springframework.scheduling.annotation.Scheduled
 
 /**
- * The http api. Only the `api` role serves it. The use cases are plain kotlin, made beans here. The api
- * writes the outbox, so it runs the relay that sends it to kafka.
+ * The http api. Only the `api` role serves it. The use cases are plain kotlin, made beans here. Each
+ * instance holds the progress streams of the candidates connected to it, fed from kafka.
  */
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnRole(AppRole.API)
-@EnableScheduling
-@Import(ProfileResource::class, ApiExceptionHandler::class, OutboxRelay::class)
+@Import(
+    ProfileResource::class,
+    CvRequestResource::class,
+    ProgressStreams::class,
+    CvProgressListener::class,
+    ApiExceptionHandler::class,
+)
 class ApiWiring {
     @Bean
     fun saveProfile(store: ProfileStore): SaveProfile = SaveProfile(store)
@@ -47,17 +52,4 @@ class ApiWiring {
         requests: CvRequestStore,
         profiles: ProfileStore,
     ): AnswerQuestions = AnswerQuestions(requests, profiles)
-
-    @Bean
-    fun outboxSchedule(relay: OutboxRelay): OutboxSchedule = OutboxSchedule(relay)
-}
-
-/** Sends the outbox every moment. Each instance runs one; the relay's row locks keep them apart. */
-class OutboxSchedule(
-    private val relay: OutboxRelay,
-) {
-    @Scheduled(fixedDelayString = "\${outbox.relay-delay-ms:500}")
-    fun relay() {
-        relay.relay()
-    }
 }

@@ -19,7 +19,7 @@ class CvWorkListenerTest {
     private val listener = CvWorkListener(advance, processed)
 
     private val event = UUID.randomUUID()
-    private val message = WorkMessage(event, 42).write()
+    private val message = RequestMessage(event, 42).write()
 
     @Test
     fun `advances the request the message names, then records the event as handled`() {

@@ -48,7 +48,7 @@ class CvWorkListener(
     )
     @KafkaListener(topics = [Topics.CV_REQUESTED], groupId = "cv-worker")
     fun onWork(payload: String) {
-        val message = WorkMessage.read(payload)
+        val message = RequestMessage.read(payload)
         if (processed.existsById(message.eventId)) return
         advance.advance(message.requestId)
         processed.save(ProcessedEventEntity(message.eventId))

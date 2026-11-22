@@ -99,8 +99,8 @@ class CvPipelineIntegrationTest : KeycloakIntegrationBase() {
         status: CvStatus,
     ) = await().atMost(Duration.ofSeconds(60)).until { statusOf(id) == status }
 
-    @Test
-    fun `a CV is interviewed, answered, then written and approved, through kafka`() {
+    /** One question, then a draft the critic approves at once. */
+    private fun agentsWriteACv() {
         agentAnswers("You help a candidate", """{"questions": [{"question": "By how much did you cut settlement time?"}]}""")
         agentAnswers(
             "You write CVs",
@@ -111,6 +111,50 @@ class CvPipelineIntegrationTest : KeycloakIntegrationBase() {
             """.trimIndent(),
         )
         agentAnswers("You check a draft CV", """{"score": 92, "approved": true, "issues": []}""")
+    }
+
+    @Test
+    fun `over http, a candidate asks for a CV, answers, and follows it on its stream to the finished CV`() {
+        agentsWriteACv()
+        put(
+            "/profile",
+            mapOf("name" to "Casey", "skills" to listOf("Kotlin"), "experience" to "Payments.", "education" to "BSc"),
+            CANDIDATE,
+        ).expectStatus()
+            .isOk
+
+        val asked =
+            post("/cv-requests", CANDIDATE)
+                .expectStatus()
+                .isAccepted
+                .expectHeader()
+                .exists("Location")
+                .expectBody(String::class.java)
+                .returnResult()
+                .responseBody!!
+        val id = json.readTree(asked).path("id").asLong()
+        waitFor(id, CvStatus.AWAITING_ANSWERS)
+        get("/cv-requests/$id", CANDIDATE_OTHER).expectStatus().isNotFound
+
+        // Opened before answering, so the changes reach it through the outbox, kafka and this api's listener.
+        val statuses =
+            events("/cv-requests/$id/events", CANDIDATE)
+                .map { json.readTree(it.data()).path("status").asString() }
+                .collectList()
+                .toFuture()
+        put("/cv-requests/$id/answers", mapOf("answers" to listOf(mapOf("questionId" to 1, "text" to "By 40%"))), CANDIDATE)
+            .expectStatus()
+            .isAccepted
+
+        val seen = statuses.get(2, java.util.concurrent.TimeUnit.MINUTES)!!
+        assertThat(seen.first()).isEqualTo("AWAITING_ANSWERS")
+        assertThat(seen).contains("WRITING")
+        assertThat(seen.last()).isEqualTo("COMPLETED")
+    }
+
+    @Test
+    fun `a CV is interviewed, answered, then written and approved, through kafka`() {
+        agentsWriteACv()
         val owner = candidate()
 
         val id = requestCv.request(owner).id!!

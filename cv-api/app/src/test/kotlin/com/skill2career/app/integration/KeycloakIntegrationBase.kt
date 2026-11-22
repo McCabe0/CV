@@ -6,7 +6,9 @@ import org.springframework.boot.json.JacksonJsonParser
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT
 import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient
+import org.springframework.core.ParameterizedTypeReference
 import org.springframework.http.MediaType
+import org.springframework.http.codec.ServerSentEvent
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
@@ -14,6 +16,8 @@ import org.springframework.test.web.reactive.server.WebTestClient
 import org.springframework.test.web.reactive.server.WebTestClient.ResponseSpec
 import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.reactive.function.BodyInserters
+import reactor.core.publisher.Flux
+import java.time.Duration
 
 /**
  * The whole app, against real postgres and keycloak, signing in as the test realm's users.
@@ -72,6 +76,35 @@ abstract class KeycloakIntegrationBase {
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(body)
             .exchange()
+
+    protected fun post(
+        url: String,
+        username: String,
+    ): ResponseSpec =
+        webTestClient
+            .post()
+            .uri(url)
+            .headers { it.setBearerAuth(tokenFor(username)) }
+            .exchange()
+
+    /** A server sent event stream, each event's data as text, until the server ends it. */
+    protected fun events(
+        url: String,
+        username: String,
+    ): Flux<ServerSentEvent<String>> =
+        webTestClient
+            .mutate()
+            .responseTimeout(Duration.ofMinutes(2))
+            .build()
+            .get()
+            .uri(url)
+            .headers { it.setBearerAuth(tokenFor(username)) }
+            .accept(MediaType.TEXT_EVENT_STREAM)
+            .exchange()
+            .expectStatus()
+            .isOk
+            .returnResult(object : ParameterizedTypeReference<ServerSentEvent<String>>() {})
+            .responseBody
 
     private fun tokenFor(username: String): String {
         val form =
