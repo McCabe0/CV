@@ -38,6 +38,12 @@ title and description. It is fast and does not touch the boards, so the boards' 
 ever hit by the crawl, never by users. An optional LLM explanation of the top matches goes through
 kafka, as the CV does.
 
-## open questions
-- crawl frequency. Proposed: every 6 hours, which suits how often boards change.
-- the starting list of companies.
+## decision: once a day, one crawl at a time
+- the crawl runs once a day. Job posts rarely change faster, and it keeps us polite to the boards.
+- a postgres advisory lock lets only one job-worker queue the day's crawl, however many run. No extra
+  library: the lock is postgres's own.
+- a job its board lists again, after going inactive, is active again.
+
+## starting companies
+Checked live on 2026-11-22: Monzo, GitLab and Cloudflare (Greenhouse), Palantir and Spotify (Lever),
+Ramp and Linear (Ashby), Blueground (Workable). The admin zone takes over the list in slice 6.
