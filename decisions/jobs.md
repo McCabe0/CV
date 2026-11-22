@@ -34,9 +34,9 @@ Every reader passes one contract test (`JobSourceContract`), with wiremock playi
 - an admin keeps the list of tracked companies (name, source, board token) in the admin zone.
 - a scheduler in the `job-worker` puts one `jobs.crawl` event per company on kafka, so the work spreads
   over every job-worker, and one slow board holds up no other.
-- a crawl upserts each posting by `(source, external id)`. A job missing from its board's latest crawl is
-  marked inactive, with when, and is never matched again. So every job matched is one the board listed
-  at its last crawl.
+- a crawl upserts each posting by `(company, external id)`: the board's own id, unique per company. A job
+  missing from its board's latest crawl is marked inactive, with when, and is not matched while it is.
+  So every job matched is one the board listed at its last crawl.
 - a board that fails is retried, then skipped until the next crawl. Its jobs stay as they were, so one
   failing board does not empty the results.
 
