@@ -49,6 +49,15 @@ describe('ProfileForm', () => {
     }
   })
 
+  it('says the limit of the long boxes, and counts the characters left as the user types', async () => {
+    renderForm()
+
+    expect(screen.getByText('Up to 5,000 characters.', { exact: false })).toBeInTheDocument()
+    await userEvent.type(screen.getByRole('textbox', { name: 'Experience' }), 'Five years.')
+    expect(screen.getByText('You have 4,989 characters remaining')).toBeInTheDocument()
+    expect(screen.getByText('You have 2,000 characters remaining')).toBeInTheDocument()
+  })
+
   it('starts with what was entered', () => {
     renderForm()
 

@@ -90,3 +90,14 @@
   margin: 0.1rem 0 0;
   accent-color: var(--color-primary);
 }
+
+/* A character count, under its box. */
+.count {
+  margin: 0.25rem 0 0;
+  color: var(--color-muted);
+}
+
+.countOver {
+  color: var(--color-error-text);
+  font-weight: 600;
+}

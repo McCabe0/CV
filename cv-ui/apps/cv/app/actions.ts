@@ -3,7 +3,7 @@
 import { apiClient } from '@cv/api-client'
 import { redirectInZone, requireSession } from '@cv/auth/server'
 import { BASE_PATH } from './basePath'
-import { readAnswers, typedAnswers, type Question } from './cvRequest'
+import { answerErrors, readAnswers, typedAnswers, type Question } from './cvRequest'
 
 const SORRY = 'Sorry, something went wrong. Try again later.'
 
@@ -24,11 +24,20 @@ export async function startCv(_previous: StartState, _data: FormData): Promise<S
   return redirectInZone(BASE_PATH, `/requests/${id}`)
 }
 
-export type AnswerState = { error?: string; values?: Record<string, string> }
+const NOT_ACCEPTED = 'Some answers were not accepted. Check them and try again.'
+
+export type AnswerState = {
+  /** About the whole form. */
+  error?: string
+  /** By field, eg an answer over the limit. */
+  errors?: Record<string, string>
+  values?: Record<string, string>
+}
 
 /**
  * Sends the answers, then shows the request being written. Bound to its request and questions on the
- * page. Should the request have moved on already, eg answered in another tab, its page shows where it is.
+ * page. An answer over the limit is shown on its box, without calling the api. Should the request have
+ * moved on already, eg answered in another tab, its page shows where it is.
  */
 export async function answerQuestions(
   id: number,
@@ -37,7 +46,10 @@ export async function answerQuestions(
   data: FormData,
 ): Promise<AnswerState> {
   const { accessToken } = await requireSession(BASE_PATH)
-  const failed = { error: SORRY, values: typedAnswers(data, questions) }
+  const values = typedAnswers(data, questions)
+
+  const errors = answerErrors(data, questions)
+  if (Object.keys(errors).length > 0) return { errors, values }
 
   try {
     const { data: answered, response } = await apiClient(accessToken).PUT(
@@ -47,9 +59,10 @@ export async function answerQuestions(
         body: { answers: readAnswers(data, questions) },
       },
     )
-    if (!answered && response.status !== 409) return failed
+    if (!answered && response.status === 400) return { error: NOT_ACCEPTED, values }
+    if (!answered && response.status !== 409) return { error: SORRY, values }
   } catch {
-    return failed
+    return { error: SORRY, values }
   }
   return redirectInZone(BASE_PATH, `/requests/${id}`)
 }

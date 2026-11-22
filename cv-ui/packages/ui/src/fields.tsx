@@ -1,7 +1,7 @@
 import type { InputHTMLAttributes, ReactNode } from 'react'
 import styles from './fields.module.css'
 
-type Common = {
+export type Common = {
   /** The form field's name, and its id, so the error summary can link to it. */
   name: string
   label: string
@@ -36,7 +36,14 @@ function HintAndError({ name, hint, error }: Pick<Common, 'name' | 'hint' | 'err
   )
 }
 
-function Field({ name, label, hint, error, optional, children }: Common & { children: ReactNode }) {
+export function Field({
+  name,
+  label,
+  hint,
+  error,
+  optional,
+  children,
+}: Common & { children: ReactNode }) {
   return (
     <div className={error ? `${styles.field} ${styles.invalid}` : styles.field}>
       <label htmlFor={name} className={styles.label}>
@@ -49,7 +56,7 @@ function Field({ name, label, hint, error, optional, children }: Common & { chil
   )
 }
 
-const controlProps = ({ name, hint, error }: Common) => ({
+export const controlProps = ({ name, hint, error }: Common) => ({
   id: name,
   name,
   'aria-describedby': describedBy({ name, hint, error }),

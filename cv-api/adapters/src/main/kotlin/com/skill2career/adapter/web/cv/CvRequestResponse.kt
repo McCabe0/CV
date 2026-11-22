@@ -62,7 +62,8 @@ data class CvRequestResponse(
 data class AnswerRequest(
     @field:Min(1)
     val questionId: Int,
-    @field:Size(max = 1000)
+    // Long enough for a detailed answer. The ui counts down to it.
+    @field:Size(max = 2000)
     @field:Schema(description = "Leave out, or empty, to skip the question.")
     val text: String? = null,
 )

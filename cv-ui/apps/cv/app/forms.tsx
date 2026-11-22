@@ -1,9 +1,9 @@
 'use client'
 
 import { useActionState } from 'react'
-import { ErrorSummary, TextArea, useErrorTitle, useFormAction } from '@cv/ui'
+import { CharacterCount, ErrorSummary, useErrorTitle, useFormAction, type FormError } from '@cv/ui'
 import type { AnswerState, StartState } from './actions'
-import { answerField, type Question } from './cvRequest'
+import { ANSWER_MAX_LENGTH, answerField, type Question } from './cvRequest'
 import styles from './forms.module.css'
 
 type StartProps = {
@@ -43,18 +43,25 @@ type AnswerProps = {
 
 export function AnswerForm({ questions, action, initialState = {} }: AnswerProps) {
   const [state, formAction, pending] = useFormAction(action, initialState)
-  useErrorTitle(Boolean(state.error))
+  const errors = state.errors ?? {}
+  const summary: FormError[] = [
+    ...(state.error ? [{ message: state.error }] : []),
+    ...Object.entries(errors).map(([field, message]) => ({ href: `#${field}`, message })),
+  ]
+  useErrorTitle(summary.length > 0)
 
   return (
     <form action={formAction} noValidate className={styles.form}>
-      <ErrorSummary errors={state.error ? [{ message: state.error }] : []} />
+      <ErrorSummary errors={summary} />
       {questions.map((question) => (
-        <TextArea
+        <CharacterCount
           key={question.id}
           name={answerField(question)}
           label={question.text}
-          hint="Leave it blank to skip."
+          hint={`Leave it blank to skip. Up to ${ANSWER_MAX_LENGTH.toLocaleString('en-GB')} characters.`}
+          maxLength={ANSWER_MAX_LENGTH}
           defaultValue={state.values?.[answerField(question)]}
+          error={errors[answerField(question)]}
           optional
         />
       ))}

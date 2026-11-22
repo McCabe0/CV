@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  CharacterCount,
   ErrorSummary,
   TextArea,
   TextField,
@@ -78,12 +79,19 @@ export function ProfileForm({ initialState, action }: Props) {
           label="Skills"
           hint="Separate them with commas or put one a line. Jobs are matched to these."
         />
-        <TextArea
+        {/* The api's limits, in ProfileRequest. */}
+        <CharacterCount
           {...field('experience')}
           label="Experience"
-          hint="The roles you have had and what you did in them"
+          hint="The roles you have had, what you did in them, and what came of it. Up to 5,000 characters."
+          maxLength={5000}
         />
-        <TextArea {...field('education')} label="Education" />
+        <CharacterCount
+          {...field('education')}
+          label="Education"
+          hint="Up to 2,000 characters."
+          maxLength={2000}
+        />
       </section>
 
       <section aria-labelledby="section-more" className={styles.section}>

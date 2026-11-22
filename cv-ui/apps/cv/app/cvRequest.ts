@@ -31,6 +31,23 @@ export function statusLine(request: CvRequest): string {
 /** The form field for a question's answer. */
 export const answerField = (question: Question) => `answer-${question.id}`
 
+/** The longest answer the api takes, in characters. Long enough for a detailed answer. */
+export const ANSWER_MAX_LENGTH = 2000
+
+const count = (n: number) => n.toLocaleString('en-GB')
+
+/** Each answer over the limit, by its field, saying how long it is. Counted as sent: trimmed. */
+export function answerErrors(data: FormData, questions: Question[]): Record<string, string> {
+  return Object.fromEntries(
+    readAnswers(data, questions)
+      .filter(({ text }) => (text?.length ?? 0) > ANSWER_MAX_LENGTH)
+      .map(({ questionId, text }) => [
+        `answer-${questionId}`,
+        `Keep this answer to ${count(ANSWER_MAX_LENGTH)} characters. It has ${count(text!.length)}.`,
+      ]),
+  )
+}
+
 /** An answer to each question, trimmed. A blank one is a skip, which is always allowed. */
 export function readAnswers(data: FormData, questions: Question[]) {
   return questions.map((question) => {

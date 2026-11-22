@@ -54,7 +54,35 @@ describe('AnswerForm', () => {
     expect(
       screen.getByRole('textbox', { name: 'Which team were you in? (optional)' }),
     ).toBeInTheDocument()
-    expect(screen.getAllByText('Leave it blank to skip.')).toHaveLength(2)
+    expect(screen.getAllByText('Leave it blank to skip. Up to 2,000 characters.')).toHaveLength(2)
+  })
+
+  it('counts the characters left in each box as the candidate types', async () => {
+    render(<AnswerForm questions={questions} action={jest.fn()} />)
+
+    await userEvent.type(screen.getByRole('textbox', { name: /settlement/ }), 'By 40%')
+
+    expect(screen.getByText('You have 1,994 characters remaining')).toBeInTheDocument()
+    expect(screen.getByText('You have 2,000 characters remaining')).toBeInTheDocument()
+  })
+
+  it('shows an answer that is too long on its box, linked from the summary', () => {
+    render(
+      <AnswerForm
+        questions={questions}
+        action={jest.fn()}
+        initialState={{
+          errors: { 'answer-2': 'Keep this answer to 2,000 characters. It has 2,340.' },
+          values: { 'answer-2': 'a'.repeat(2340) },
+        }}
+      />,
+    )
+
+    expect(
+      screen.getByRole('link', { name: 'Keep this answer to 2,000 characters. It has 2,340.' }),
+    ).toHaveAttribute('href', '#answer-2')
+    expect(screen.getByRole('textbox', { name: /team/ })).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByText('You have 340 characters too many')).toBeInTheDocument()
   })
 
   it('sends the answers', async () => {

@@ -101,4 +101,25 @@ describe('answerQuestions', () => {
 
     expect((await answerQuestions(7, questions, {}, answered())).error).toBe(SORRY)
   })
+
+  it('refuses an answer over the limit, on its box, without calling the api, keeping what was typed', async () => {
+    const data = answered()
+    data.set('answer-2', 'a'.repeat(2001))
+
+    const state = await answerQuestions(7, questions, {}, data)
+
+    expect(PUT).not.toHaveBeenCalled()
+    expect(state.errors).toEqual({
+      'answer-2': 'Keep this answer to 2,000 characters. It has 2,001.',
+    })
+    expect(state.values!['answer-2']).toHaveLength(2001)
+  })
+
+  it('says to check the answers, not to try later, when the api refuses them', async () => {
+    PUT.mockResolvedValue({ data: undefined, error: {}, response: { status: 400 } })
+
+    expect((await answerQuestions(7, questions, {}, answered())).error).toBe(
+      'Some answers were not accepted. Check them and try again.',
+    )
+  })
 })

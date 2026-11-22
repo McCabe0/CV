@@ -1,4 +1,4 @@
-import { isFinished, readAnswers, statusLine } from './cvRequest'
+import { answerErrors, isFinished, readAnswers, statusLine } from './cvRequest'
 import { cvRequest, round } from './fixtures'
 
 describe('statusLine', () => {
@@ -43,5 +43,29 @@ describe('readAnswers', () => {
       { questionId: 2, text: null },
       { questionId: 3, text: null },
     ])
+  })
+})
+
+describe('answerErrors', () => {
+  const questions = [
+    { id: 1, text: 'By how much?' },
+    { id: 2, text: 'Which team?' },
+  ]
+
+  it('finds each answer over 2,000 characters, saying how long it is', () => {
+    const data = new FormData()
+    data.set('answer-1', 'a'.repeat(2340))
+    data.set('answer-2', 'a'.repeat(2000))
+
+    expect(answerErrors(data, questions)).toEqual({
+      'answer-1': 'Keep this answer to 2,000 characters. It has 2,340.',
+    })
+  })
+
+  it('counts the answer as it will be sent, trimmed', () => {
+    const data = new FormData()
+    data.set('answer-1', `  ${'a'.repeat(2000)}  `)
+
+    expect(answerErrors(data, questions)).toEqual({})
   })
 })

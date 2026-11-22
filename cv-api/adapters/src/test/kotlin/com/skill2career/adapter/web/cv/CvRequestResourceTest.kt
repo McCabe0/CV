@@ -177,12 +177,21 @@ class CvRequestResourceTest {
     }
 
     @Test
-    fun `refuses an answer too long, or too many, before anything is changed`() {
-        mockMvc.perform(answering("""{"answers": [{"questionId": 1, "text": "${"a".repeat(1001)}"}]}""")).andExpect(status().isBadRequest)
+    fun `refuses an answer over 2,000 characters, or too many answers, before anything is changed`() {
+        mockMvc.perform(answering("""{"answers": [{"questionId": 1, "text": "${"a".repeat(2001)}"}]}""")).andExpect(status().isBadRequest)
         val six = (1..6).joinToString(",") { """{"questionId": $it, "text": "x"}""" }
         mockMvc.perform(answering("""{"answers": [$six]}""")).andExpect(status().isBadRequest)
 
         verifyNoInteractions(answerQuestions)
+    }
+
+    @Test
+    fun `takes a detailed answer, up to 2,000 characters`() {
+        whenever(answerQuestions.answer(eq(OWNER), eq(7), any())) doReturn writing().copy(id = 7)
+
+        mockMvc
+            .perform(answering("""{"answers": [{"questionId": 1, "text": "${"a".repeat(2000)}"}]}"""))
+            .andExpect(status().isAccepted)
     }
 
     @Test
