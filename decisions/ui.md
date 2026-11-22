@@ -27,7 +27,9 @@ The first ui is one vite page with no tests. It is rebuilt, as the digital-resol
 - playwright for journeys through the shell: sign in, roles, keyboard use, reflow at 320px. They run
   against the whole compose stack, so the ui, the api, postgres and keycloak (with the api's test realm)
   are all real, and a journey proves the slice end to end. The api's error states (a 500, the api down)
-  are covered by the jest tests, which stub the client.
+  are covered by the jest tests, which stub the client. The one stand in is the LLM: docker-compose.e2e.yml
+  points the cv-worker at wiremock playing gemini (cv-ui/e2e/wiremock), so the CV journey costs nothing,
+  needs no key, and gets the same interview, draft and review every run.
 - 90% line and branch coverage.
 - `@cv/api-client`'s types are generated from the running api's openapi spec (`pnpm api:spec`), so a
   change to the api's contract fails the ui's typecheck.

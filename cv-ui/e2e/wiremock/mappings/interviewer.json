@@ -1,0 +1,18 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPathPattern": "/v1beta/models/.*:generateContent",
+    "bodyPatterns": [
+      {
+        "contains": "You help a candidate"
+      }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": "{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"{\\\"questions\\\":[{\\\"question\\\":\\\"By how much did you cut settlement time?\\\"}]}\"}]},\"finishReason\":\"STOP\"}]}"
+  }
+}

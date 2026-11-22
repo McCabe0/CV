@@ -1,7 +1,9 @@
 import { defineConfig, devices } from '@playwright/test'
 
-// Runs through the shell against the whole stack: `docker compose up -d shell` from the repository
-// root first. The ui, the api, postgres and keycloak (with the api's test realm) are all real.
+// Runs through the shell against the whole stack, from the repository root first:
+//   docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --build --wait shell cv-worker
+// The ui, the api, the cv-worker, kafka, postgres and keycloak (with the api's test realm) are all real;
+// only the LLM is wiremock playing gemini, so every run gets the same interview, draft and review.
 export default defineConfig({
   testDir: './e2e',
   // The journeys save real profiles for the realm's few users, so they run one at a time.

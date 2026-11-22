@@ -1,0 +1,18 @@
+# The stack for the playwright journeys, over docker-compose.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --build --wait shell cv-worker
+# The cv-worker's LLM is wiremock playing gemini, so the journeys cost nothing, need no key, and get the
+# same interview, draft and review every run: cv-ui/e2e/wiremock/mappings. See decisions/ui.md.
+services:
+  gemini:
+    image: wiremock/wiremock:3.13.2
+    volumes:
+      - ./cv-ui/e2e/wiremock:/home/wiremock:ro
+
+  cv-worker:
+    depends_on:
+      gemini:
+        condition: service_started
+    environment:
+      LLM_PROVIDER: gemini
+      GEMINI_API_KEY: e2e-not-a-real-key
+      LLM_GEMINI_BASEURL: http://gemini:8080/v1beta
