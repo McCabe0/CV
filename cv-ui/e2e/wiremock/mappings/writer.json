@@ -1,0 +1,18 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPathPattern": "/v1beta/models/.*:generateContent",
+    "bodyPatterns": [
+      {
+        "contains": "You write CVs"
+      }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": "{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"{\\\"summary\\\":\\\"Backend engineer who cut settlement time by 40%.\\\",\\\"skills\\\":[\\\"Kotlin\\\",\\\"PostgreSQL\\\"],\\\"roles\\\":[{\\\"title\\\":\\\"Software Engineer\\\",\\\"company\\\":\\\"Acme Payments\\\",\\\"dates\\\":\\\"\\\",\\\"bullets\\\":[\\\"Cut settlement time by 40%\\\"]}],\\\"education\\\":[\\\"BSc Computer Science\\\"],\\\"projects\\\":[],\\\"certifications\\\":[],\\\"languages\\\":[]}\"}]},\"finishReason\":\"STOP\"}]}"
+  }
+}

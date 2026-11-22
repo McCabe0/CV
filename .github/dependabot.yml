@@ -1,0 +1,37 @@
+# Weekly and grouped, so it is a few pull requests. Security fixes do not wait for the week.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ['*']
+  - package-ecosystem: docker
+    directories:
+      - /cv-api
+    schedule:
+      interval: weekly
+    groups:
+      base-images:
+        patterns: ['*']
+    # A runtime's major version moves with the code's toolchain, by hand.
+    ignore:
+      - dependency-name: eclipse-temurin
+        update-types: ['version-update:semver-major']
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      compose-images:
+        patterns: ['*']
+  - package-ecosystem: gradle
+    directory: /cv-api
+    schedule:
+      interval: weekly
+    groups:
+      gradle:
+        patterns: ['*']
+        update-types: [minor, patch]

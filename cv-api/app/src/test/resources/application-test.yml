@@ -1,0 +1,7 @@
+app:
+  roles: api
+
+# Not a real key: the pipeline test points gemini at wiremock, and no other test calls an LLM.
+llm:
+  gemini:
+    api-key: test-key-not-real

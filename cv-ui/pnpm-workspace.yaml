@@ -1,0 +1,7 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Dependencies may not run install scripts unless listed here.
+allowBuilds:
+  '@parcel/watcher': false

@@ -1,0 +1,45 @@
+name: Smoke tests
+
+# The whole stack together, from docker-compose.yml and docker-compose.e2e.yml: the ui, the api, the
+# cv-worker (its LLM wiremock playing gemini), postgres, kafka and keycloak with
+# the api's test realm. Playwright signs in and uses the ui as a person would. OWASP ZAP joins in
+# slice 7. See decisions/workflow.md.
+on:
+  workflow_call:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: cv-ui
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+        with:
+          package_json_file: cv-ui/package.json
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: cv-ui/.nvmrc
+          cache: pnpm
+          cache-dependency-path: cv-ui/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Start the stack
+        working-directory: .
+        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml up --detach --build --wait shell cv-worker
+        timeout-minutes: 15
+      - run: pnpm e2e
+        timeout-minutes: 10
+      - name: Show the stack's logs
+        if: ${{ failure() }}
+        working-directory: .
+        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml logs --no-color
+      - name: Upload playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: smoke-report
+          path: cv-ui/playwright-report/

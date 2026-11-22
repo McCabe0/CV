@@ -1,0 +1,51 @@
+name: Pipeline
+
+# Every push to main. Cve, perf, observability and the deploy test join slice by slice.
+# See decisions/workflow.md.
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: pipeline
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  validate-api:
+    uses: ./.github/workflows/_validate-api.yml
+
+  validate-ui:
+    uses: ./.github/workflows/_validate-ui.yml
+
+  images:
+    name: image ${{ matrix.image }}
+    strategy:
+      matrix:
+        include:
+          - image: cv-api
+            context: cv-api
+          - image: cv-shell
+            context: cv-ui
+            app: shell
+          - image: cv-profile
+            context: cv-ui
+            app: profile
+          - image: cv-cv
+            context: cv-ui
+            app: cv
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/_image.yml
+    with:
+      image: ${{ matrix.image }}
+      context: ${{ matrix.context }}
+      build-args: APP=${{ matrix.app }}
+
+  smoke:
+    needs: [validate-api, validate-ui]
+    uses: ./.github/workflows/_smoke.yml

@@ -1,0 +1,17 @@
+.rounds {
+  max-width: 40rem;
+  margin-top: var(--space-4);
+}
+
+.list {
+  padding-left: var(--space-3);
+}
+
+.round {
+  margin-bottom: var(--space-2);
+}
+
+.issue {
+  margin: var(--space-1) 0 0;
+  color: var(--color-muted);
+}

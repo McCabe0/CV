@@ -142,13 +142,13 @@ export default function ProfileForm({ initialValue, loading, error, onSubmit }: 
 
   return (
     <form onSubmit={handleSubmit} className="card grid">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-        <h2 style={{ margin: 0 }}>Step 1: Build your profile</h2>
+      <div className="section-head">
+        <h2>Step 1 · Build your profile</h2>
         <button type="button" onClick={applySample}>
-          Use dummy data
+          ✨ Use dummy data
         </button>
       </div>
-      <p className="muted" style={{ margin: 0 }}>Start with the basics and we’ll generate a CV draft for you.</p>
+      <p className="muted">Start with the basics and we’ll generate a CV draft for you.</p>
 
       <div className="grid-2">
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" required />
@@ -180,7 +180,7 @@ export default function ProfileForm({ initialValue, loading, error, onSubmit }: 
         <input value={certifications} onChange={(e) => setCertifications(e.target.value)} placeholder="Certifications (comma-separated)" />
       </div>
 
-      <h3 style={{ margin: '4px 0 0' }}>Contact details</h3>
+      <h3>Contact details</h3>
       <div className="grid-2">
         <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
         <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" />
@@ -190,20 +190,20 @@ export default function ProfileForm({ initialValue, loading, error, onSubmit }: 
         <input value={portfolio} onChange={(e) => setPortfolio(e.target.value)} placeholder="Portfolio / GitHub URL" />
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-        <h3 style={{ margin: 0 }}>Work history</h3>
+      <div className="section-head">
+        <h3>Work history</h3>
         <button type="button" onClick={addRole}>
-          Add role
+          + Add role
         </button>
       </div>
       {workHistory.length === 0 ? (
-        <p className="muted" style={{ margin: 0 }}>
+        <p className="muted">
           Optional, but adding roles produces a far more accurate CV. Click “Add role” to start.
         </p>
       ) : null}
       {workHistory.map((role, index) => (
-        <div key={index} className="card grid" style={{ background: '#f8fafc' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+        <div key={index} className="subcard grid">
+          <div className="section-head">
             <strong>Role {index + 1}</strong>
             <button type="button" onClick={() => removeRole(index)}>
               Remove
@@ -237,7 +237,7 @@ export default function ProfileForm({ initialValue, loading, error, onSubmit }: 
       {error ? <p className="error">{error}</p> : null}
 
       <button type="submit" disabled={!isValid || loading}>
-        {loading ? 'Generating CV...' : 'Generate CV'}
+        {loading ? <><span className="spinner" />Generating CV…</> : 'Generate CV →'}
       </button>
     </form>
   )

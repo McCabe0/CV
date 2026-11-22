@@ -260,19 +260,22 @@ export default function App() {
   return (
     <div className="app-shell">
       <div className="card">
-        <div className="card-header">
-          <div>
-            <h1>Skill2Career</h1>
-            <p className="muted">
-              Build your profile, generate your CV, and get matched jobs in one flow.
-            </p>
+        <div className="hero">
+          <div className="hero-brand">
+            <span className="brand-dot" aria-hidden="true">S2</span>
+            <div>
+              <h1>Skill2Career</h1>
+              <p className="hero-sub">
+                Build your profile, generate your CV, and get matched to jobs — in one flow.
+              </p>
+            </div>
           </div>
           <button type="button" onClick={handleReset} disabled={stepIndex === 0 && !profile}>
             Start over
           </button>
         </div>
 
-        <div className="stepper">
+        <nav className="stepper" aria-label="Progress">
           {STEPS.map((entry, index) => (
             <button
               key={entry.key}
@@ -280,43 +283,50 @@ export default function App() {
               className={`step-pill ${stepIndex >= index ? 'active' : ''}`}
               onClick={() => setStep(entry.key)}
               disabled={index > maxStepIndex}
+              aria-current={stepIndex === index ? 'step' : undefined}
             >
-              {entry.label}
+              <span className="step-num">{stepIndex > index ? '✓' : index + 1}</span>
+              {entry.label.replace(/^\d+\.\s*/, '')}
             </button>
           ))}
-        </div>
+        </nav>
 
-        <p className="muted id-line">
-          Profile ID: <strong>{profileId ?? 'N/A'}</strong> | CV ID: <strong>{cvId ?? 'N/A'}</strong>
-        </p>
+        <div className="meta-row">
+          <span className="meta-pill">Profile ID <strong>{profileId ?? '—'}</strong></span>
+          <span className="meta-pill">CV ID <strong>{cvId ?? '—'}</strong></span>
+        </div>
       </div>
 
       {step === 'profile' ? (
-        <ProfileForm initialValue={profile ?? undefined} loading={profileLoading} error={profileError} onSubmit={handleProfileSubmit} />
+        <div className="panel" key="profile">
+          <ProfileForm initialValue={profile ?? undefined} loading={profileLoading} error={profileError} onSubmit={handleProfileSubmit} />
+        </div>
       ) : null}
 
       {step === 'cv' ? (
-        <CvPreview
-          cv={cv}
-          loading={cvLoading}
-          error={cvError}
-          onUpdateCv={setCv}
-          onContinue={handleFindMatches}
-          continueLoading={resultsLoading}
-          onBackToProfile={() => setStep('profile')}
-          onRegenerate={handleRegenerateCv}
-          onDownloadPdf={handleDownloadPdf}
-        />
+        <div className="panel" key="cv">
+          <CvPreview
+            cv={cv}
+            loading={cvLoading}
+            error={cvError}
+            onUpdateCv={setCv}
+            onContinue={handleFindMatches}
+            continueLoading={resultsLoading}
+            onBackToProfile={() => setStep('profile')}
+            onRegenerate={handleRegenerateCv}
+            onDownloadPdf={handleDownloadPdf}
+          />
+        </div>
       ) : null}
 
       {step === 'results' ? (
-        <div className="grid">
+        <div className="grid panel" key="results">
           <div className="results-actions">
             <button type="button" onClick={handleRefreshRecommendations} disabled={resultsLoading || !profileId}>
-              {resultsLoading ? 'Refreshing...' : 'Refresh recommendations'}
+              {resultsLoading ? <><span className="spinner" />Refreshing…</> : 'Refresh recommendations'}
             </button>
             <button type="button" onClick={handleGenerateReasoning} disabled={resultsLoading || !lastMatchPayload}>
-              {resultsLoading ? 'Generating...' : 'Generate reasoning for top 3'}
+              {resultsLoading ? <><span className="spinner" />Generating…</> : 'Generate reasoning for top 3'}
             </button>
           </div>
 

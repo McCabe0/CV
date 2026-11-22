@@ -1,0 +1,7 @@
+# Metrics arrive from the collector over otlp, so nothing is scraped and the api needs no public
+# metrics endpoint.
+otlp:
+  promote_resource_attributes:
+    - service.name
+    # So an error rate or a latency can be split by the version that served it. See decisions/dora.md.
+    - service.version
