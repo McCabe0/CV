@@ -24,6 +24,7 @@ Ordered roughly by impact: the **Core gaps** turn this from a demo into a produc
 
 ## 🛠️ Technical / platform
 
+- [ ] **Ollama as a local LLM provider** — run the CV agents on a free, private local model, chosen by `llm.provider=ollama`. See [the ticket](docs/tickets/ollama-llm-provider.md).
 - [ ] **Gemini usage & rate-limit indicator** — surface remaining quota / call counts so users understand the "uses more API calls" trade-offs.
 - [ ] **Request de-duplication & optimistic UI** — avoid redundant calls and make interactions feel instant.
 - [ ] **End-to-end tests** — Playwright coverage for the full 3-step flow (profile → CV → matches).
