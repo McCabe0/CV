@@ -53,7 +53,7 @@ services:
       retries: 20
 
   keycloak:
-    image: quay.io/keycloak/keycloak:26.0
+    image: quay.io/keycloak/keycloak:26.8
     command: start-dev --import-realm
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
@@ -75,7 +75,7 @@ services:
   # Kafka in kraft mode, with no zookeeper. See decisions/messaging.md.
   # Inside the network it is kafka:9092, from the host localhost:29092.
   kafka:
-    image: apache/kafka:4.1.0
+    image: apache/kafka:4.3.1
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -101,7 +101,7 @@ services:
 
   # Topics, consumer lag and the dead letter topics, to look at by hand.
   kafka-ui:
-    image: ghcr.io/kafbat/kafka-ui:v1.2.0
+    image: ghcr.io/kafbat/kafka-ui:v1.5.1
     depends_on:
       kafka:
         condition: service_healthy
@@ -113,7 +113,7 @@ services:
 
   # Observability. The apps only send to the collector. See decisions/observability.md.
   collector:
-    image: otel/opentelemetry-collector-contrib:0.164.0-386
+    image: otel/opentelemetry-collector-contrib:0.165.0-386
     command: --config=/etc/collector/config.yaml
     ports:
       - "4318:4318"
@@ -121,12 +121,12 @@ services:
       - ./local/collector/config.yaml:/etc/collector/config.yaml:ro
 
   jaeger:
-    image: jaegertracing/jaeger:2.22.0
+    image: jaegertracing/jaeger:2.23.0
     ports:
       - "16686:16686"
 
   prometheus:
-    image: prom/prometheus:v3.15.1
+    image: prom/prometheus:v3.16.0
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --web.enable-otlp-receiver
@@ -134,10 +134,10 @@ services:
       - ./local/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
 
   loki:
-    image: grafana/loki:3.7.9
+    image: grafana/loki:3.7.10
 
   grafana:
-    image: grafana/grafana:13.3.0
+    image: grafana/grafana:13.3.1
     depends_on:
       - prometheus
       - loki
