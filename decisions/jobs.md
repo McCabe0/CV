@@ -22,6 +22,14 @@ interface JobSource {
 ```
 No api keys, no scraping, and no aggregators, whose links lead back to the aggregator.
 
+Every reader passes one contract test (`JobSourceContract`), with wiremock playing its board:
+- descriptions are kept as plain text, a line per paragraph, heading and list item, for matching. Lever and
+  Ashby send it; Greenhouse and Workable send html, which jsoup turns into text.
+- a posting missing its id, title or link is skipped, so one bad posting loses no other.
+- a board that is unknown (404) is `UnknownJobBoard`, not retried: its token is wrong. Any other failure,
+  or an answer without its list of jobs, is `JobBoardUnavailable`, retried. Never an empty list, which
+  would mark every job inactive.
+
 ## decision: tracked companies, crawled on a schedule
 - an admin keeps the list of tracked companies (name, source, board token) in the admin zone.
 - a scheduler in the `job-worker` puts one `jobs.crawl` event per company on kafka, so the work spreads

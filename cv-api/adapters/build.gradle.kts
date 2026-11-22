@@ -37,6 +37,9 @@ dependencies {
     // RestClient. See decisions/agents.md.
     implementation("com.anthropic:anthropic-java:3.3.0")
 
+    // Turns the job boards' html descriptions into plain text, for matching. See decisions/jobs.md.
+    implementation("org.jsoup:jsoup:1.24.1")
+
     // The outbox relay and the cv-worker's listener. See decisions/messaging.md.
     api("org.springframework.boot:spring-boot-starter-kafka")
 
