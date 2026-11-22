@@ -20,8 +20,10 @@ Dependabot keeps gradle, npm, docker and actions up to date.
 In vertical slices, each one test first, green, and reviewed before the next:
 1. skeleton: gradle modules, compose, decisions, core ci
 2. profile: api, profile zone and shell sign in
-3. CV agents: interviewer, writer and critic, both LLM adapters, outbox and kafka, server sent events
+3. CV agents: interviewer, writer and critic, both LLM adapters, outbox and kafka, server sent events.
+   A general CV, aimed at the profile's target role
 4. job ingest: the board adapters, the scheduler, freshness
-5. matching, and the jobs zone
+5. matching, and the jobs zone. A CV tailored to one job: the same loop, its brief carrying the job's
+   description, so the writer aims at it and the critic checks its keywords
 6. the admin zone
 7. the rest of the pipeline: zap, grype, k6, mutation, helm on kind, DORA

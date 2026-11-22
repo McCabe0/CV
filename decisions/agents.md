@@ -9,8 +9,10 @@ which LLM it talks to.
 ### stage 1: the interviewer
 Reads the profile and finds what a strong CV needs but the profile does not say: a bullet with no
 number, a skill with no evidence, a gap in dates, a target role with no matching experience. It asks the
-user up to five questions. The user answers, or skips, in the profile zone. The answers are added to the
-profile as facts the user gave. Skipping is always allowed, so a CV is never blocked on it.
+user up to five questions (should it ask more, the first five are kept). The user answers, or skips, in
+the profile zone. The answers are saved to the profile as facts the user gave, so a later CV, eg one
+tailored to a job, reuses them, and the interviewer does not ask again what they already say. Skipping
+is always allowed, so a CV is never blocked on it.
 
 ### stage 2: the writer and the critic
 ```
@@ -33,14 +35,25 @@ profile + answers ──→ writer ──draft──→ critic ──approved─
 The prompts are built each time from the profile, the answers and the last feedback. There is no
 stored prompt to go stale.
 
-## the port
+## the ports
+The application owns the loop and its rules, and sees each agent as a port:
+```kotlin
+interface Interviewer { fun questionsFor(profile: Profile): List<Question> }
+interface Writer { fun write(brief: Brief): Cv }
+interface Critic { fun review(brief: Brief, draft: Cv): Review }
+```
+The adapters implement them with an LLM: each builds its prompt, asks for json against a schema and
+reads the answer. So the application stays pure kotlin with no json library, and its tests use plain
+fakes. (Decided 2026-11-22, in place of agents in the application on an `LlmClient` port.)
+
+Under the agents, in the adapters:
 ```kotlin
 interface LlmClient {
     fun complete(request: LlmRequest): LlmResponse
 }
 ```
-`LlmRequest` holds a system instruction, the messages and a json schema for the answer. Both agents ask
-for json against a schema, so a response that does not fit is a failure, retried once, not a guess.
+`LlmRequest` holds a system instruction, the messages and a json schema for the answer. A response that
+does not fit the schema is a failure, retried once, not a guess.
 
 Two adapters, chosen by `llm.provider=gemini|claude`. One contract test suite runs against both, each
 against wiremock playing that provider's api, so changing provider is a tested change of setting.
