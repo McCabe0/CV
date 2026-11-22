@@ -9,7 +9,40 @@ server:
 app:
   roles: ${APP_ROLES:api}
 
+# The LLM behind the cv-worker's agents: one provider and one model for all three. See decisions/agents.md.
+# The worker fails at its start without the provider's key.
+llm:
+  provider: ${LLM_PROVIDER:gemini}
+  model: ${LLM_MODEL:}
+  gemini:
+    api-key: ${GEMINI_API_KEY:}
+  claude:
+    api-key: ${ANTHROPIC_API_KEY:}
+
+# A queued request the LLM could not do is tried this many times in all, this far apart, then parked on
+# cv.requested.dlq. See decisions/messaging.md.
+cv:
+  worker:
+    attempts: 4
+    retry-delay-ms: 30000
+
 spring:
+  # Bootstrap servers from SPRING_KAFKA_BOOTSTRAP_SERVERS. See decisions/messaging.md.
+  kafka:
+    producer:
+      acks: all
+      properties:
+        enable.idempotence: true
+    consumer:
+      auto-offset-reset: earliest
+      # One request at a time: a CV takes several LLM calls, minutes on a slow model, and kafka must not
+      # hand the message to another worker meanwhile.
+      max-poll-records: 1
+      properties:
+        max.poll.interval.ms: 900000
+    listener:
+      ack-mode: record
+
   application:
     name: cv-api
 

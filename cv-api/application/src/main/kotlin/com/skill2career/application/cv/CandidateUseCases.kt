@@ -15,7 +15,7 @@ class RequestCv(
 ) {
     fun request(ownerId: OwnerId): CvRequest {
         profiles.findByOwner(ownerId) ?: throw ProfileNotFound(ownerId)
-        return requests.save(CvRequest.requested(ownerId))
+        return requests.save(CvRequest.requested(ownerId), queueWork = true)
     }
 }
 
@@ -44,6 +44,6 @@ class AnswerQuestions(
     ): CvRequest {
         val answered = requests.findOwned(ownerId, id).answered(answers)
         profiles.findByOwner(ownerId)?.let { profiles.save(it.withFacts(answered.facts())) }
-        return requests.save(answered)
+        return requests.save(answered, queueWork = true)
     }
 }

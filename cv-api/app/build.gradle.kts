@@ -22,12 +22,16 @@ dependencies {
     implementation("io.opentelemetry.instrumentation:opentelemetry-logback-appender-1.0:2.28.1-alpha")
     implementation("net.ttddyy.observation:datasource-micrometer-spring-boot:2.3.0")
 
+    testImplementation(testFixtures(project(":domain")))
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.boot:spring-boot-starter-security-test")
     testImplementation("org.springframework.boot:spring-boot-webtestclient")
     testImplementation("org.testcontainers:testcontainers")
     testImplementation("org.testcontainers:testcontainers-postgresql")
     testImplementation("com.github.dasniko:testcontainers-keycloak:4.4.0")
+    testImplementation("org.testcontainers:testcontainers-kafka")
+    // Plays gemini in the cv pipeline test.
+    testImplementation("org.wiremock:wiremock-standalone:3.13.2")
 }
 
 // Mutation testing, weekly and report only. Not part of check. See decisions/workflow.md.

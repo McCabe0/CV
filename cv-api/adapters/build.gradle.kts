@@ -37,6 +37,9 @@ dependencies {
     // RestClient. See decisions/agents.md.
     implementation("com.anthropic:anthropic-java:3.3.0")
 
+    // The outbox relay and the cv-worker's listener. See decisions/messaging.md.
+    api("org.springframework.boot:spring-boot-starter-kafka")
+
     // The persistence adapter owns the schema, so its migrations live beside its entities.
     api("org.springframework.boot:spring-boot-starter-flyway")
     runtimeOnly("org.flywaydb:flyway-database-postgresql")

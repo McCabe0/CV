@@ -23,6 +23,9 @@ x-api-environment: &api-environment
   MANAGEMENT_OTLP_METRICS_EXPORT_STEP: 15s
   # Every request locally, so any one you make can be found.
   MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
+  # The cv-worker's LLM, from .env (see .env.example). The worker does not start without the key.
+  LLM_PROVIDER: ${LLM_PROVIDER:-gemini}
+  LLM_MODEL: ${LLM_MODEL:-}
   GEMINI_API_KEY: ${GEMINI_API_KEY:-}
   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
 

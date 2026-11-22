@@ -36,6 +36,7 @@ abstract class KeycloakIntegrationBase {
             registry.add("spring.datasource.username", Containers.postgres::getUsername)
             registry.add("spring.datasource.password", Containers.postgres::getPassword)
             registry.add("spring.security.oauth2.resourceserver.jwt.issuer-uri") { Containers.issuer }
+            registry.add("spring.kafka.bootstrap-servers") { Containers.kafka.bootstrapServers }
         }
     }
 

@@ -28,6 +28,13 @@ class AnswerQuestionsTest {
     }
 
     @Test
+    fun `queues the answered request for the cv-worker to write`() {
+        answerQuestions.answer(OWNER, waiting.id!!, emptyList())
+
+        assertThat(requests.queued).containsExactly(waiting.id)
+    }
+
+    @Test
     fun `saves the answers to the profile as facts, so a later CV uses them too`() {
         answerQuestions.answer(OWNER, waiting.id!!, listOf(Answer(1, "By 40%"), Answer(2, " ")))
 

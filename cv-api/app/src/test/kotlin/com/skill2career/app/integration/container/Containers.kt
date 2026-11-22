@@ -1,6 +1,7 @@
 package com.skill2career.app.integration.container
 
 import dasniko.testcontainers.keycloak.KeycloakContainer
+import org.testcontainers.kafka.KafkaContainer
 import org.testcontainers.postgresql.PostgreSQLContainer
 import java.time.Duration
 
@@ -30,4 +31,9 @@ object Containers {
     }
 
     val issuer: String by lazy { "${keycloak.authServerUrl}/realms/$REALM" }
+
+    /** Every role loads kafka, so every test gets one, as it would in compose. */
+    val kafka: KafkaContainer by lazy {
+        KafkaContainer("apache/kafka:4.1.0").apply { start() }
+    }
 }

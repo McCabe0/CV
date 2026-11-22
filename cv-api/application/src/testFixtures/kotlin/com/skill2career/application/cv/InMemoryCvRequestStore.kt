@@ -8,10 +8,17 @@ class InMemoryCvRequestStore : CvRequestStore {
     private var nextId = 1L
     val saves = mutableListOf<CvRequest>()
 
-    override fun save(request: CvRequest): CvRequest {
+    /** The ids of the requests queued for the cv-worker, in order. */
+    val queued = mutableListOf<Long>()
+
+    override fun save(
+        request: CvRequest,
+        queueWork: Boolean,
+    ): CvRequest {
         val saved = if (request.id == null) request.copy(id = nextId++) else request
         requests[saved.id!!] = saved
         saves += saved
+        if (queueWork) queued.add(saved.id!!)
         return saved
     }
 

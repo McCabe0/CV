@@ -54,4 +54,18 @@ class WriteCv(
     }
 }
 
+/**
+ * Takes a request as far as it can go without the candidate: the interview, then, if nothing needs
+ * asking or it has been answered, the writing. What the cv-worker does for each queued request.
+ */
+class AdvanceCvRequest(
+    private val interview: InterviewCandidate,
+    private val write: WriteCv,
+) {
+    fun advance(id: Long): CvRequest {
+        val request = interview.interview(id)
+        return if (request.status == CvStatus.WRITING) write.write(id) else request
+    }
+}
+
 private const val PROFILE_GONE = "The profile was deleted"

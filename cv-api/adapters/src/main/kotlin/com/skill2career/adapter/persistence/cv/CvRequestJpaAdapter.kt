@@ -1,5 +1,8 @@
 package com.skill2career.adapter.persistence.cv
 
+import com.skill2career.adapter.messaging.OutboxEntity
+import com.skill2career.adapter.messaging.OutboxRepo
+import com.skill2career.adapter.messaging.WorkMessage
 import com.skill2career.adapter.persistence.AnswersConverter
 import com.skill2career.adapter.persistence.CvConverter
 import com.skill2career.adapter.persistence.QuestionsConverter
@@ -27,6 +30,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
+import java.util.UUID
 
 /** The table's shape. The domain never sees it: [toDomain] and [of] translate. */
 @Entity
@@ -89,16 +93,22 @@ class CvRequestEntity(
 
 interface CvRequestJpaRepo : JpaRepository<CvRequestEntity, Long>
 
-/** The [CvRequestStore] port, on postgres. */
+/** The [CvRequestStore] port, on postgres. Work for the cv-worker goes in the outbox, in the same transaction. */
 @Repository
 @Transactional
 class CvRequestJpaAdapter(
     private val repo: CvRequestJpaRepo,
+    private val outbox: OutboxRepo,
 ) : CvRequestStore {
-    override fun save(request: CvRequest): CvRequest {
+    override fun save(
+        request: CvRequest,
+        queueWork: Boolean,
+    ): CvRequest {
         val entity = CvRequestEntity.of(request)
         request.id?.let { id -> repo.findById(id).ifPresent { entity.createdAt = it.createdAt } }
-        return repo.save(entity).toDomain()
+        val saved = repo.save(entity).toDomain()
+        if (queueWork) outbox.save(OutboxEntity.work(WorkMessage(UUID.randomUUID(), saved.id!!)))
+        return saved
     }
 
     @Transactional(readOnly = true)

@@ -27,6 +27,15 @@ class RequestCvTest {
     }
 
     @Test
+    fun `queues the new request for the cv-worker, in the same save`() {
+        profiles.save(profile())
+
+        val request = RequestCv(profiles, requests).request(OWNER)
+
+        assertThat(requests.queued).containsExactly(request.id)
+    }
+
+    @Test
     fun `needs a profile, as the CV is written only from it`() {
         assertThatThrownBy { RequestCv(profiles, requests).request(OWNER) }.isInstanceOf(ProfileNotFound::class.java)
     }

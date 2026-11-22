@@ -1,5 +1,8 @@
 package com.skill2career.adapter.persistence.cv
 
+import com.skill2career.adapter.messaging.OutboxRepo
+import com.skill2career.adapter.messaging.Topics
+import com.skill2career.adapter.messaging.WorkMessage
 import com.skill2career.adapter.persistence.PostgresTest
 import com.skill2career.domain.cv.Answer
 import com.skill2career.domain.cv.CvFixtures.awaitingAnswers
@@ -23,12 +26,33 @@ class CvRequestJpaAdapterTest : PostgresTest() {
     @Autowired
     lateinit var adapter: CvRequestJpaAdapter
 
+    @Autowired
+    lateinit var outbox: OutboxRepo
+
     @Test
     fun `gives a new request its id`() {
         val saved = adapter.save(CvRequest.requested(OWNER))
 
         assertThat(saved.id).isNotNull()
         assertThat(adapter.find(saved.id!!)).isEqualTo(saved)
+    }
+
+    @Test
+    fun `queues work for the cv-worker in the outbox, in the same save`() {
+        val saved = adapter.save(CvRequest.requested(OWNER), queueWork = true)
+
+        val queued = outbox.findAll().single()
+        assertThat(queued.topic).isEqualTo(Topics.CV_REQUESTED)
+        assertThat(queued.messageKey).isEqualTo(saved.id.toString())
+        assertThat(WorkMessage.read(queued.payload)).isEqualTo(WorkMessage(queued.eventId, saved.id!!))
+        assertThat(queued.sentAt).isNull()
+    }
+
+    @Test
+    fun `queues nothing for a plain save`() {
+        adapter.save(CvRequest.requested(OWNER))
+
+        assertThat(outbox.count()).isZero()
     }
 
     @Test

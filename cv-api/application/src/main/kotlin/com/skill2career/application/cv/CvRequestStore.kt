@@ -5,7 +5,14 @@ import com.skill2career.domain.profile.OwnerId
 
 /** Where CV requests are kept, with their rounds. A driven port: an adapter implements it. */
 interface CvRequestStore {
-    fun save(request: CvRequest): CvRequest
+    /**
+     * Saves the request. With [queueWork], it is also queued for the cv-worker, in the same save: both
+     * happen, or neither, so the worker never misses a request, nor works on one that was not saved.
+     */
+    fun save(
+        request: CvRequest,
+        queueWork: Boolean = false,
+    ): CvRequest
 
     fun find(id: Long): CvRequest?
 }
