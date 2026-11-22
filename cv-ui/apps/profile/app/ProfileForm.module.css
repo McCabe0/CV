@@ -1,0 +1,29 @@
+.form {
+  max-width: 40rem;
+}
+
+.section {
+  margin-bottom: var(--space-4);
+  padding: var(--space-3) var(--space-3) var(--space-1);
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-primary);
+  background: var(--color-surface);
+}
+
+.section h2 {
+  margin-top: 0;
+}
+
+.saved {
+  padding: var(--space-2);
+  border-left: 4px solid var(--color-success);
+  background: var(--color-surface);
+  color: var(--color-success-text);
+  font-weight: 600;
+}
+
+@media (max-width: 32rem) {
+  .section {
+    padding: var(--space-2) var(--space-2) var(--space-1);
+  }
+}

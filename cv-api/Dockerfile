@@ -8,10 +8,11 @@ COPY domain/build.gradle.kts domain/
 COPY application/build.gradle.kts application/
 COPY adapters/build.gradle.kts adapters/
 COPY app/build.gradle.kts app/
-RUN ./gradlew dependencies -Dorg.gradle.daemon=false > /dev/null
+# Gradle's cache is kept between builds, so a download that failed part way is not started again.
+RUN --mount=type=cache,target=/root/.gradle ./gradlew dependencies -Dorg.gradle.daemon=false > /dev/null
 
 COPY . .
-RUN ./gradlew :app:bootJar -Dorg.gradle.daemon=false
+RUN --mount=type=cache,target=/root/.gradle ./gradlew :app:bootJar -Dorg.gradle.daemon=false
 
 FROM eclipse-temurin:25-jre-alpine
 

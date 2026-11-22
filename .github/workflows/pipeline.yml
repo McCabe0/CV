@@ -1,6 +1,6 @@
 name: Pipeline
 
-# Every push to main. Smoke, cve, perf, observability and the deploy test join slice by slice.
+# Every push to main. Cve, perf, observability and the deploy test join slice by slice.
 # See decisions/workflow.md.
 on:
   push:
@@ -18,6 +18,9 @@ jobs:
   validate-api:
     uses: ./.github/workflows/_validate-api.yml
 
+  validate-ui:
+    uses: ./.github/workflows/_validate-ui.yml
+
   images:
     name: image ${{ matrix.image }}
     strategy:
@@ -25,6 +28,12 @@ jobs:
         include:
           - image: cv-api
             context: cv-api
+          - image: cv-shell
+            context: cv-ui
+            app: shell
+          - image: cv-profile
+            context: cv-ui
+            app: profile
     permissions:
       contents: read
       packages: write
@@ -32,3 +41,8 @@ jobs:
     with:
       image: ${{ matrix.image }}
       context: ${{ matrix.context }}
+      build-args: APP=${{ matrix.app }}
+
+  smoke:
+    needs: [validate-api, validate-ui]
+    uses: ./.github/workflows/_smoke.yml

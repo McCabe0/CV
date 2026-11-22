@@ -24,6 +24,11 @@ The first ui is one vite page with no tests. It is rebuilt, as the digital-resol
 - jest and react testing library for each page and component: its states, behaviour and accessibility
   (jest-axe).
 - a page that loads data on the server is a thin loader around a view. The view gets the component tests.
-- playwright for journeys through the shell: sign in, roles, keyboard use, reflow at 320px. Keycloak runs
-  as a real container with the api's test realm, the api is wiremock.
+- playwright for journeys through the shell: sign in, roles, keyboard use, reflow at 320px. They run
+  against the whole compose stack, so the ui, the api, postgres and keycloak (with the api's test realm)
+  are all real, and a journey proves the slice end to end. The api's error states (a 500, the api down)
+  are covered by the jest tests, which stub the client.
 - 90% line and branch coverage.
+- `@cv/api-client`'s types are generated from the running api's openapi spec (`pnpm api:spec`), so a
+  change to the api's contract fails the ui's typecheck.
+- `telemetry` joins with the observability work; it is not in slice 2.

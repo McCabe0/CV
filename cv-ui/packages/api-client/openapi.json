@@ -1,0 +1,311 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "OpenAPI definition",
+    "version": "v0"
+  },
+  "paths": {
+    "/profile": {
+      "get": {
+        "tags": ["profile"],
+        "summary": "Your profile",
+        "description": "404 until you have saved one.",
+        "operationId": "find",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["profile"],
+        "summary": "Save your profile",
+        "description": "Creates it, or replaces the one you have.",
+        "operationId": "save",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ProfileRequest": {
+        "type": "object",
+        "description": "What the candidate tells us about themselves. The CV is written only from this.",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Casey Candidate",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "skills": {
+            "type": "array",
+            "description": "Each once; case and spaces are ignored.",
+            "example": ["Kotlin", "SQL"],
+            "items": {
+              "type": "string",
+              "maxLength": 50,
+              "minLength": 0
+            },
+            "maxItems": 50,
+            "minItems": 0
+          },
+          "experience": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 0
+          },
+          "education": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 0
+          },
+          "targetRole": {
+            "type": ["string", "null"],
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "yearsOfExperience": {
+            "type": ["string", "null"],
+            "maxLength": 20,
+            "minLength": 0
+          },
+          "location": {
+            "type": ["string", "null"],
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "workAuthorization": {
+            "type": ["string", "null"],
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "projects": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 500,
+              "minLength": 0
+            },
+            "maxItems": 20,
+            "minItems": 0
+          },
+          "certifications": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 200,
+              "minLength": 0
+            },
+            "maxItems": 20,
+            "minItems": 0
+          },
+          "languages": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 50,
+              "minLength": 0
+            },
+            "maxItems": 20,
+            "minItems": 0
+          },
+          "email": {
+            "type": ["string", "null"],
+            "format": "email",
+            "maxLength": 254,
+            "minLength": 0
+          },
+          "phone": {
+            "type": ["string", "null"],
+            "maxLength": 30,
+            "minLength": 0
+          },
+          "linkedin": {
+            "type": ["string", "null"],
+            "maxLength": 300,
+            "minLength": 0,
+            "pattern": "^https?://\\S+$"
+          },
+          "portfolio": {
+            "type": ["string", "null"],
+            "maxLength": 300,
+            "minLength": 0,
+            "pattern": "^https?://\\S+$"
+          },
+          "workHistory": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkExperienceRequest"
+            },
+            "maxItems": 30,
+            "minItems": 0
+          }
+        },
+        "required": ["education", "experience", "name", "skills"]
+      },
+      "WorkExperienceRequest": {
+        "type": "object",
+        "description": "A role the candidate has held.",
+        "properties": {
+          "company": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "startDate": {
+            "type": ["string", "null"],
+            "example": "2021-03",
+            "maxLength": 20,
+            "minLength": 0
+          },
+          "endDate": {
+            "type": ["string", "null"],
+            "description": "Empty while the role is current.",
+            "maxLength": 20,
+            "minLength": 0
+          },
+          "bullets": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 500,
+              "minLength": 0
+            },
+            "maxItems": 20,
+            "minItems": 0
+          }
+        },
+        "required": ["company", "title"]
+      },
+      "ProfileResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "skills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "experience": {
+            "type": "string"
+          },
+          "education": {
+            "type": "string"
+          },
+          "targetRole": {
+            "type": ["string", "null"]
+          },
+          "yearsOfExperience": {
+            "type": ["string", "null"]
+          },
+          "location": {
+            "type": ["string", "null"]
+          },
+          "workAuthorization": {
+            "type": ["string", "null"]
+          },
+          "projects": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "certifications": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "languages": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "email": {
+            "type": ["string", "null"]
+          },
+          "phone": {
+            "type": ["string", "null"]
+          },
+          "linkedin": {
+            "type": ["string", "null"]
+          },
+          "portfolio": {
+            "type": ["string", "null"]
+          },
+          "workHistory": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkExperience"
+            }
+          }
+        }
+      },
+      "WorkExperience": {
+        "type": "object",
+        "properties": {
+          "company": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "startDate": {
+            "type": ["string", "null"]
+          },
+          "endDate": {
+            "type": ["string", "null"]
+          },
+          "bullets": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

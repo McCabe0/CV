@@ -1,0 +1,25 @@
+/* Skill2Career design tokens. */
+:root {
+  --font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  --color-primary: #0b5cad;
+  --color-primary-text: #fff;
+  --color-background: #f6f8fb;
+  --color-surface: #fff;
+  --color-border: #d3dae3;
+  --color-text: #1a1f26;
+  --color-muted: #434c57;
+  --color-error: #d4351c;
+  --color-error-text: #a40e1c;
+  --color-success: #00703c;
+  --color-success-text: #005a30;
+  --color-focus: #005ea8;
+
+  --space-1: 0.5rem;
+  --space-2: 1rem;
+  --space-3: 1.5rem;
+  --space-4: 2rem;
+
+  --content-width: 56rem;
+  --target-size: 2.75rem;
+}

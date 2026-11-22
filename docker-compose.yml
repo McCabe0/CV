@@ -199,3 +199,52 @@ services:
       <<: *api-environment
       APP_ROLES: job-worker
       OTEL_SERVICE_NAME: job-worker
+
+  # The ui: the shell owns localhost:3000 and routes each zone's base path to it. See decisions/ui.md.
+  shell:
+    build:
+      context: ./cv-ui
+      args:
+        APP: shell
+        GIT_SHA: ${GIT_SHA:-unknown}
+    healthcheck: &ui-healthcheck
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/', { redirect: 'manual' }).then((r) => process.exit(r.status < 500 ? 0 : 1), () => process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      profile:
+        condition: service_healthy
+    environment: &ui-environment
+      # The browser uses keycloak at localhost:8180. The ui's servers call it inside the network.
+      KEYCLOAK_ISSUER: http://localhost:8180/realms/skill2career
+      KEYCLOAK_INTERNAL_URL: http://keycloak:8080
+      KEYCLOAK_ALLOW_HTTP: "true"
+      KEYCLOAK_CLIENT_ID: cv-ui
+      KEYCLOAK_CLIENT_SECRET: cv-ui-secret
+      APP_URL: http://localhost:3000
+      SESSION_SECRET: local-compose-session-secret-not-for-production
+      API_URL: http://api:8080/api
+      PROFILE_URL: http://profile:3000
+    ports:
+      - "3000:3000"
+
+  # A zone: only reached through the shell, so it has no port of its own.
+  profile:
+    build:
+      context: ./cv-ui
+      args:
+        APP: profile
+        GIT_SHA: ${GIT_SHA:-unknown}
+    healthcheck:
+      <<: *ui-healthcheck
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/profile', { redirect: 'manual' }).then((r) => process.exit(r.status < 500 ? 0 : 1), () => process.exit(1))"]
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    environment:
+      <<: *ui-environment
