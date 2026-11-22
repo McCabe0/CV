@@ -33,6 +33,10 @@ dependencies {
     implementation("tools.jackson.module:jackson-module-kotlin")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.2.0")
 
+    // The LLMs behind the CV agents. Claude through its official sdk; Gemini over http with spring's
+    // RestClient. See decisions/agents.md.
+    implementation("com.anthropic:anthropic-java:3.3.0")
+
     // The persistence adapter owns the schema, so its migrations live beside its entities.
     api("org.springframework.boot:spring-boot-starter-flyway")
     runtimeOnly("org.flywaydb:flyway-database-postgresql")
@@ -47,4 +51,6 @@ dependencies {
     testImplementation("org.mockito.kotlin:mockito-kotlin:6.4.0")
     testImplementation("org.testcontainers:testcontainers")
     testImplementation("org.testcontainers:testcontainers-postgresql")
+    // Plays each LLM provider's api in the contract tests. Standalone, so its jetty cannot clash.
+    testImplementation("org.wiremock:wiremock-standalone:3.13.2")
 }
