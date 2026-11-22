@@ -1,5 +1,5 @@
 ---
-roles: backend, software engineer, server, api, java, kotlin, go, platform, distributed systems
+roles: backend, server, api, java, kotlin, go, platform, distributed systems
 level: mid
 ---
 <!-- Invented: every name, company and number. An example of style, never of facts. -->

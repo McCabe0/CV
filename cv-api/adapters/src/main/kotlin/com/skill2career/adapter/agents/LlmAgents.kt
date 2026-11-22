@@ -55,29 +55,36 @@ class LlmInterviewer(
 
 class LlmWriter(
     llm: LlmClient,
+    private val guide: CvGuide,
 ) : Writer {
     private val call = AgentCall(llm)
 
-    override fun write(brief: Brief): Cv =
-        call.ask(
+    override fun write(brief: Brief): Cv {
+        val guidance = guide.forRole(brief.profile.targetRole)
+        return call.ask(
             "The writer",
             LlmRequest(
-                SYSTEM,
-                Prompts.profile(brief.profile) + (brief.lastRound?.let(Prompts::feedback) ?: ""),
+                SYSTEM + Prompts.guide(guidance.guide),
+                Prompts.profile(brief.profile) +
+                    (guidance.example?.let(Prompts::example) ?: "") +
+                    (brief.lastRound?.let(Prompts::feedback) ?: ""),
                 Schema.cv,
             ),
             CvAnswer::class.java,
         ) { it.toCv() }
+    }
 
     private companion object {
         val SYSTEM =
             """
-            You write CVs. Use only what the profile and the candidate's answers say: never invent an
-            employer, a title, a date, a number, a skill or a qualification.
+            You write CVs, to the guide below. Use only what the profile and the candidate's answers say:
+            never invent an employer, a title, a date, a number, a skill or a qualification.
             - Each bullet shows what came of the work, with a number where the facts give one.
             - Use the target role's keywords where the facts support them, for applicant tracking systems.
             - The summary is about this person and this role, in two or three sentences.
             - Leave a role's dates blank when they are not known.
+            - Leave languages empty unless the role or its market needs a language.
+            If an example CV is given, take its style only, never its facts: its people and numbers are invented.
             If an earlier draft and its review are given, write a new draft that fixes every issue raised.
             """.trimIndent()
     }
@@ -85,6 +92,7 @@ class LlmWriter(
 
 class LlmCritic(
     llm: LlmClient,
+    private val guide: CvGuide,
 ) : Critic {
     private val call = AgentCall(llm)
 
@@ -106,7 +114,8 @@ class LlmCritic(
         call.ask(
             "The critic",
             LlmRequest(
-                SYSTEM,
+                // The guide, never the example: the critic checks facts against the profile alone.
+                SYSTEM + Prompts.guide(guide.forRole(brief.profile.targetRole).guide),
                 Prompts.profile(brief.profile) + "<draft>\n${Prompts.draft(draft)}</draft>\n",
                 SCHEMA,
             ),
@@ -147,8 +156,9 @@ class LlmCritic(
             - NO_IMPACT: a bullet that says what was done but not what came of it, where the facts say.
             - MISSING_KEYWORD: a keyword of the target role, supported by the facts, that the CV leaves out.
             - GENERIC_SUMMARY: a summary that could be about anyone.
-            - OTHER: anything else that would stop it being sent.
-            Score it from 0 to 100. Approve it only if it is ready to send, with no invented fact.
+            - OTHER: anything else that would stop it being sent, eg breaking a rule of the guide below.
+            Score it from 0 to 100, against the guide. Approve it only if it is ready to send, with no
+            invented fact.
             """.trimIndent()
     }
 }

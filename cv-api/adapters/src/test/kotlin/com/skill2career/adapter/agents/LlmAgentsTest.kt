@@ -18,6 +18,15 @@ class LlmAgentsTest {
     private val answered = profile().withFacts(listOf(Fact("By how much did you cut settlement time?", "By 40%")))
     private val brief = Brief(answered)
 
+    /** A guide that says which role it was asked for, with an example for it. */
+    private var exampleGiven: String? = "**Summary**\nAn example CV."
+    private val roleAsked = mutableListOf<String?>()
+    private val guide =
+        CvGuide { role ->
+            roleAsked += role
+            Guidance(guide = "THE GUIDE: bullets show results.", example = exampleGiven)
+        }
+
     private val cvJson =
         """
         {
@@ -62,7 +71,7 @@ class LlmAgentsTest {
 
     @Test
     fun `the writer's draft becomes the CV, a blank date being none`() {
-        val draft = LlmWriter(ScriptedLlm(cvJson)).write(brief)
+        val draft = LlmWriter(ScriptedLlm(cvJson), guide).write(brief)
 
         assertThat(draft.summary).isEqualTo("Backend engineer.")
         assertThat(draft.roles).containsExactly(CvRole("Engineer", "Acme", null, listOf("Cut time by 40%")))
@@ -73,7 +82,7 @@ class LlmAgentsTest {
     fun `the writer is given the profile and the candidate's answers, and told never to invent`() {
         val llm = ScriptedLlm(cvJson)
 
-        LlmWriter(llm).write(brief)
+        LlmWriter(llm, guide).write(brief)
 
         val request = llm.requests.single()
         assertThat(request.prompt).contains("Casey Candidate", "By how much did you cut settlement time?", "By 40%")
@@ -91,7 +100,7 @@ class LlmAgentsTest {
                 rejected(65, Issue(IssueKind.GENERIC_SUMMARY, "Name the payments work")),
             )
 
-        LlmWriter(llm).write(brief.copy(lastRound = lastRound))
+        LlmWriter(llm, guide).write(brief.copy(lastRound = lastRound))
 
         assertThat(
             llm.requests.single().prompt,
@@ -105,7 +114,7 @@ class LlmAgentsTest {
                 """{"score": 72, "approved": false, "issues": [{"kind": "NO_IMPACT", "detail": "Add numbers"}]}""",
             )
 
-        val review = LlmCritic(llm).review(brief, cv())
+        val review = LlmCritic(llm, guide).review(brief, cv())
 
         assertThat(review).isEqualTo(Review(72, false, listOf(Issue(IssueKind.NO_IMPACT, "Add numbers"))))
     }
@@ -114,7 +123,7 @@ class LlmAgentsTest {
     fun `the critic is shown the draft beside the facts it may use, and the rubric`() {
         val llm = ScriptedLlm("""{"score": 90, "approved": true, "issues": []}""")
 
-        LlmCritic(llm).review(brief, cv(summary = "The draft to check."))
+        LlmCritic(llm, guide).review(brief, cv(summary = "The draft to check."))
 
         val request = llm.requests.single()
         assertThat(request.prompt).contains("The draft to check.", "Casey Candidate", "By 40%")
@@ -129,14 +138,14 @@ class LlmAgentsTest {
                 """{"score": 88, "approved": true, "issues": []}""",
             )
 
-        assertThat(LlmCritic(llm).review(brief, cv()).score).isEqualTo(88)
+        assertThat(LlmCritic(llm, guide).review(brief, cv()).score).isEqualTo(88)
     }
 
     @Test
     fun `an issue of a kind the critic should not use is kept, as other`() {
         val llm = ScriptedLlm("""{"score": 70, "approved": false, "issues": [{"kind": "TYPO", "detail": "Teh"}]}""")
 
-        assertThat(LlmCritic(llm).review(brief, cv()).issues).containsExactly(Issue(IssueKind.OTHER, "Teh"))
+        assertThat(LlmCritic(llm, guide).review(brief, cv()).issues).containsExactly(Issue(IssueKind.OTHER, "Teh"))
     }
 
     @Test
@@ -144,11 +153,45 @@ class LlmAgentsTest {
         val llm = ScriptedLlm(cvJson.replace("\"dates\": \"\"", "\"dates\": \"2021 – now\""))
 
         assertThat(
-            LlmWriter(llm)
+            LlmWriter(llm, guide)
                 .write(brief)
                 .roles
                 .single()
                 .dates,
         ).isEqualTo("2021 – now")
+    }
+
+    @Test
+    fun `the writer drafts to the guide, with an example for the target role, for its style only`() {
+        val llm = ScriptedLlm(cvJson)
+
+        LlmWriter(llm, guide).write(brief)
+
+        val request = llm.requests.single()
+        assertThat(roleAsked).containsExactly("Backend Engineer")
+        assertThat(request.system).contains("<guide>\nTHE GUIDE: bullets show results.\n</guide>")
+        assertThat(request.prompt).contains("<example>", "An example CV.", "</example>")
+        assertThat(request.prompt).contains("its style only, never its facts")
+    }
+
+    @Test
+    fun `the writer is given no example when none fits the role`() {
+        exampleGiven = null
+        val llm = ScriptedLlm(cvJson)
+
+        LlmWriter(llm, guide).write(brief)
+
+        assertThat(llm.requests.single().prompt).doesNotContain("<example>")
+    }
+
+    @Test
+    fun `the critic scores against the guide, and is shown no example, so it never checks facts against one`() {
+        val llm = ScriptedLlm("""{"score": 90, "approved": true, "issues": []}""")
+
+        LlmCritic(llm, guide).review(brief, cv())
+
+        val request = llm.requests.single()
+        assertThat(request.system).contains("<guide>\nTHE GUIDE: bullets show results.\n</guide>")
+        assertThat(request.prompt).doesNotContain("An example CV.")
     }
 }

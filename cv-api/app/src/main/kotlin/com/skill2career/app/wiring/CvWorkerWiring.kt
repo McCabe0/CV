@@ -1,5 +1,7 @@
 package com.skill2career.app.wiring
 
+import com.skill2career.adapter.agents.CvGuide
+import com.skill2career.adapter.agents.FileCvGuide
 import com.skill2career.adapter.agents.LlmCritic
 import com.skill2career.adapter.agents.LlmInterviewer
 import com.skill2career.adapter.agents.LlmWriter
@@ -36,10 +38,20 @@ class CvWorkerWiring {
     fun interviewer(llm: LlmClient): Interviewer = LlmInterviewer(llm)
 
     @Bean
-    fun writer(llm: LlmClient): Writer = LlmWriter(llm)
+    fun writer(
+        llm: LlmClient,
+        guide: CvGuide,
+    ): Writer = LlmWriter(llm, guide)
 
     @Bean
-    fun critic(llm: LlmClient): Critic = LlmCritic(llm)
+    fun critic(
+        llm: LlmClient,
+        guide: CvGuide,
+    ): Critic = LlmCritic(llm, guide)
+
+    /** The CV guide and examples, read once, from cv-guide/ in the image. */
+    @Bean
+    fun cvGuide(): CvGuide = FileCvGuide()
 
     @Bean
     fun interviewCandidate(

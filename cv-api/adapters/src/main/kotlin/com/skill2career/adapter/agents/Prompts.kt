@@ -75,6 +75,13 @@ internal object Prompts {
             }
         }
 
+    /** The CV guide, appended to an agent's instruction. */
+    fun guide(guide: String): String = "\n\n<guide>\n$guide\n</guide>"
+
+    /** An example CV for a similar role: its people and numbers are invented, so never a source of facts. */
+    fun example(example: String): String =
+        "<example>\nA strong CV for a similar role: take its style only, never its facts.\n$example\n</example>\n"
+
     fun draft(cv: Cv): String =
         buildString {
             appendLine("Summary: ${cv.summary}")
