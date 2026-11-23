@@ -31,11 +31,11 @@ dependencies {
     api("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("tools.jackson.module:jackson-module-kotlin")
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.2.0")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.2.1")
 
     // The LLMs behind the CV agents. Claude through its official sdk; Gemini over http with spring's
     // RestClient. See decisions/agents.md.
-    implementation("com.anthropic:anthropic-java:3.3.0")
+    implementation("com.anthropic:anthropic-java:3.12.0")
 
     // Turns the job boards' html descriptions into plain text, for matching. See decisions/jobs.md.
     implementation("org.jsoup:jsoup:1.24.1")

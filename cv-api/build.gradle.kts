@@ -2,10 +2,10 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 
 plugins {
-    kotlin("jvm") version "2.3.21" apply false
-    kotlin("plugin.spring") version "2.3.21" apply false
-    kotlin("plugin.jpa") version "2.3.21" apply false
-    id("org.springframework.boot") version "4.1.2" apply false
+    kotlin("jvm") version "2.4.21" apply false
+    kotlin("plugin.spring") version "2.4.21" apply false
+    kotlin("plugin.jpa") version "2.4.21" apply false
+    id("org.springframework.boot") version "4.2.0" apply false
     id("io.spring.dependency-management") version "1.1.7" apply false
     id("org.jlleitschuh.gradle.ktlint") version "14.2.0" apply false
     id("info.solidsoft.pitest") version "1.19.0" apply false
@@ -41,7 +41,7 @@ subprojects {
 
     dependencies {
         "testImplementation"("org.jetbrains.kotlin:kotlin-test-junit5")
-        "testImplementation"("org.assertj:assertj-core:3.27.6")
+        "testImplementation"("org.assertj:assertj-core:3.27.7")
         "testRuntimeOnly"("org.junit.platform:junit-platform-launcher")
     }
 
