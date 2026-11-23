@@ -1,0 +1,18 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPathPattern": "/v1beta/models/.*:generateContent",
+    "bodyPatterns": [
+      {
+        "contains": "You tell a candidate why a job fits them"
+      }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": "{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"{\\\"summary\\\":\\\"The job asks for Kotlin and PostgreSQL, and you have built payment APIs with both.\\\"}\"}]},\"finishReason\":\"STOP\"}]}"
+  }
+}

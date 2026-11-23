@@ -1,9 +1,9 @@
 name: Smoke tests
 
 # The whole stack together, from docker-compose.yml and docker-compose.e2e.yml: the ui, the api, the
-# cv-worker (its LLM wiremock playing gemini), postgres, kafka and keycloak with
-# the api's test realm. Playwright signs in and uses the ui as a person would. OWASP ZAP joins in
-# slice 7. See decisions/workflow.md.
+# cv-worker (its LLM wiremock playing gemini), the job-worker (crawling wiremock playing the job
+# boards), postgres, kafka and keycloak with the api's test realm. Playwright signs in and uses the ui
+# as a person would. OWASP ZAP joins in slice 7. See decisions/workflow.md.
 on:
   workflow_call:
 
@@ -29,7 +29,7 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - name: Start the stack
         working-directory: .
-        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml up --detach --build --wait shell cv-worker
+        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml up --detach --build --wait shell cv-worker job-worker
         timeout-minutes: 15
       - run: pnpm e2e
         timeout-minutes: 10
