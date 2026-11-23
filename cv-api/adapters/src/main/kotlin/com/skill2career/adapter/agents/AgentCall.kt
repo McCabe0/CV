@@ -4,6 +4,8 @@ import com.skill2career.adapter.llm.LlmClient
 import com.skill2career.adapter.llm.LlmRequest
 import com.skill2career.adapter.llm.LlmUnusableAnswer
 import com.skill2career.application.cv.AgentFailure
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import tools.jackson.core.JacksonException
 import tools.jackson.databind.DeserializationFeature
 import tools.jackson.databind.json.JsonMapper
@@ -24,9 +26,12 @@ internal class AgentCall(
         toDomain: (A) -> T,
     ): T {
         var problem = ""
-        repeat(ATTEMPTS) {
+        repeat(ATTEMPTS) { attempt ->
+            val started = System.nanoTime()
             try {
-                return toDomain(json.readValue(llm.complete(request), answer))
+                val result = toDomain(json.readValue(llm.complete(request), answer))
+                log.info("{} answered in {}ms", agent, (System.nanoTime() - started) / 1_000_000)
+                return result
             } catch (unusable: LlmUnusableAnswer) {
                 problem = unusable.message.orEmpty()
             } catch (unreadable: JacksonException) {
@@ -34,12 +39,15 @@ internal class AgentCall(
             } catch (refused: IllegalArgumentException) {
                 problem = "its answer broke a rule: ${refused.message}"
             }
+            if (attempt < ATTEMPTS - 1) log.warn("{}'s answer was unusable, asking once more: {}", agent, problem)
         }
         throw AgentFailure("$agent gave no usable answer: $problem")
     }
 
     private companion object {
         const val ATTEMPTS = 2
+
+        val log: Logger = LoggerFactory.getLogger(AgentCall::class.java)
 
         val json: JsonMapper =
             JsonMapper
