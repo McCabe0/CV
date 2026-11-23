@@ -48,6 +48,30 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/jobs/{jobId}/fit': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Why a job fits you
+     * @description 404 until you have asked.
+     */
+    get: operations['find_1']
+    put?: never
+    /**
+     * Ask why a job fits you
+     * @description 202 while it is written: read it with GET until it is READY or FAILED. 200 when it was already written. Asking again after it FAILED writes it afresh.
+     */
+    post: operations['request']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/cv-requests': {
     parameters: {
       query?: never
@@ -59,9 +83,29 @@ export interface paths {
     put?: never
     /**
      * Ask for a CV
-     * @description 409 until you have saved a profile. Follow it at its Location.
+     * @description A general CV, aimed at your target role, or, with a jobId, one aimed at that listed job. 409 until you have saved a profile; 404 for a job no longer listed. Follow it at its Location.
      */
-    post: operations['request']
+    post: operations['request_1']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/jobs/matches': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Jobs that fit your skills
+     * @description Best first, at most 50. 404 until you have saved a profile.
+     */
+    get: operations['matches']
+    put?: never
+    post?: never
     delete?: never
     options?: never
     head?: never
@@ -79,7 +123,7 @@ export interface paths {
      * A CV request as it stands
      * @description For a client that cannot stream, or reconnects.
      */
-    get: operations['find_1']
+    get: operations['find_2']
     put?: never
     post?: never
     delete?: never
@@ -215,6 +259,11 @@ export interface components {
       cv?: components['schemas']['Cv'] | null
       /** @description Only once failed: why. */
       failure?: string | null
+      /**
+       * Format: int64
+       * @description The job this CV is aimed at; none for a general CV.
+       */
+      jobId?: number | null
     }
     CvRole: {
       title: string
@@ -241,6 +290,33 @@ export interface components {
       approved: boolean
       issues: components['schemas']['Issue'][]
       summary: string
+    }
+    FitSummaryResponse: {
+      /** Format: int64 */
+      jobId: number
+      status: string
+      text?: string | null
+      failure?: string | null
+    }
+    /** @description What to aim the CV at. No body, or no jobId, for a general CV. */
+    CvRequestBody: {
+      /**
+       * Format: int64
+       * @description A listed job, from your matches.
+       */
+      jobId?: number | null
+    }
+    JobMatchResponse: {
+      /** Format: int64 */
+      id: number
+      title: string
+      company: string
+      location?: string | null
+      workplace?: string | null
+      applyUrl: string
+      matchedSkills: string[]
+      /** Format: date-time */
+      firstSeenAt: string
     }
     SseEmitter: {
       /** Format: int64 */
@@ -325,14 +401,62 @@ export interface operations {
       }
     }
   }
+  find_1: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        jobId: number
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['FitSummaryResponse']
+        }
+      }
+    }
+  }
   request: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        jobId: number
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['FitSummaryResponse']
+        }
+      }
+    }
+  }
+  request_1: {
     parameters: {
       query?: never
       header?: never
       path?: never
       cookie?: never
     }
-    requestBody?: never
+    requestBody?: {
+      content: {
+        'application/json': components['schemas']['CvRequestBody']
+      }
+    }
     responses: {
       /** @description OK */
       200: {
@@ -345,7 +469,32 @@ export interface operations {
       }
     }
   }
-  find_1: {
+  matches: {
+    parameters: {
+      query?: {
+        /** @description Only jobs whose board says they are remote. */
+        remoteOnly?: boolean
+        /** @description Only jobs whose location names this, eg London or UK. */
+        location?: string
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['JobMatchResponse'][]
+        }
+      }
+    }
+  }
+  find_2: {
     parameters: {
       query?: never
       header?: never

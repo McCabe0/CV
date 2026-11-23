@@ -222,6 +222,8 @@ services:
         condition: service_healthy
       cv:
         condition: service_healthy
+      jobs:
+        condition: service_healthy
     environment: &ui-environment
       # The browser uses keycloak at localhost:8180. The ui's servers call it inside the network.
       KEYCLOAK_ISSUER: http://localhost:8180/realms/skill2career
@@ -234,6 +236,7 @@ services:
       API_URL: http://api:8080/api
       PROFILE_URL: http://profile:3000
       CV_URL: http://cv:3000
+      JOBS_URL: http://jobs:3000
     ports:
       - "3000:3000"
 
@@ -265,6 +268,24 @@ services:
     healthcheck:
       <<: *ui-healthcheck
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/cv', { redirect: 'manual' }).then((r) => process.exit(r.status < 500 ? 0 : 1), () => process.exit(1))"]
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    environment:
+      <<: *ui-environment
+
+  # A zone: the candidate's matched jobs, why each fits, and a CV for one.
+  jobs:
+    build:
+      context: ./cv-ui
+      args:
+        APP: jobs
+        GIT_SHA: ${GIT_SHA:-unknown}
+    healthcheck:
+      <<: *ui-healthcheck
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/jobs', { redirect: 'manual' }).then((r) => process.exit(r.status < 500 ? 0 : 1), () => process.exit(1))"]
     depends_on:
       keycloak:
         condition: service_healthy

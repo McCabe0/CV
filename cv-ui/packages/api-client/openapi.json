@@ -94,12 +94,81 @@
         }
       }
     },
+    "/jobs/{jobId}/fit": {
+      "get": {
+        "tags": ["jobs"],
+        "summary": "Why a job fits you",
+        "description": "404 until you have asked.",
+        "operationId": "find_1",
+        "parameters": [
+          {
+            "name": "jobId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FitSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["jobs"],
+        "summary": "Ask why a job fits you",
+        "description": "202 while it is written: read it with GET until it is READY or FAILED. 200 when it was already written. Asking again after it FAILED writes it afresh.",
+        "operationId": "request",
+        "parameters": [
+          {
+            "name": "jobId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FitSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/cv-requests": {
       "post": {
         "tags": ["cv"],
         "summary": "Ask for a CV",
-        "description": "409 until you have saved a profile. Follow it at its Location.",
-        "operationId": "request",
+        "description": "A general CV, aimed at your target role, or, with a jobId, one aimed at that listed job. 409 until you have saved a profile; 404 for a job no longer listed. Follow it at its Location.",
+        "operationId": "request_1",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CvRequestBody"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "OK",
@@ -114,12 +183,58 @@
         }
       }
     },
+    "/jobs/matches": {
+      "get": {
+        "tags": ["jobs"],
+        "summary": "Jobs that fit your skills",
+        "description": "Best first, at most 50. 404 until you have saved a profile.",
+        "operationId": "matches",
+        "parameters": [
+          {
+            "name": "remoteOnly",
+            "in": "query",
+            "description": "Only jobs whose board says they are remote.",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "location",
+            "in": "query",
+            "description": "Only jobs whose location names this, eg London or UK.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 100,
+              "minLength": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/JobMatchResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/cv-requests/{id}": {
       "get": {
         "tags": ["cv"],
         "summary": "A CV request as it stands",
         "description": "For a client that cannot stream, or reconnects.",
-        "operationId": "find_1",
+        "operationId": "find_2",
         "parameters": [
           {
             "name": "id",
@@ -461,7 +576,7 @@
           "text": {
             "type": ["string", "null"],
             "description": "Leave out, or empty, to skip the question.",
-            "maxLength": 1000,
+            "maxLength": 2000,
             "minLength": 0
           }
         },
@@ -593,6 +708,11 @@
           "failure": {
             "type": ["string", "null"],
             "description": "Only once failed: why."
+          },
+          "jobId": {
+            "type": ["integer", "null"],
+            "format": "int64",
+            "description": "The job this CV is aimed at; none for a general CV."
           }
         },
         "required": ["answers", "id", "questions", "rounds", "status"]
@@ -670,6 +790,71 @@
           }
         },
         "required": ["approved", "issues", "number", "score", "summary"]
+      },
+      "FitSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string"
+          },
+          "text": {
+            "type": ["string", "null"]
+          },
+          "failure": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["jobId", "status"]
+      },
+      "CvRequestBody": {
+        "type": "object",
+        "description": "What to aim the CV at. No body, or no jobId, for a general CV.",
+        "properties": {
+          "jobId": {
+            "type": ["integer", "null"],
+            "format": "int64",
+            "description": "A listed job, from your matches."
+          }
+        }
+      },
+      "JobMatchResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "title": {
+            "type": "string"
+          },
+          "company": {
+            "type": "string"
+          },
+          "location": {
+            "type": ["string", "null"]
+          },
+          "workplace": {
+            "type": ["string", "null"]
+          },
+          "applyUrl": {
+            "type": "string"
+          },
+          "matchedSkills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "firstSeenAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["applyUrl", "company", "firstSeenAt", "id", "matchedSkills", "title"]
       },
       "SseEmitter": {
         "type": "object",

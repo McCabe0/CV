@@ -8,14 +8,23 @@ import styles from './forms.module.css'
 
 type StartProps = {
   action: (state: StartState, data: FormData) => Promise<StartState>
+  /** The job to aim the CV at, chosen in the jobs area; none for a general CV. */
+  jobId?: number
   initialState?: StartState
 }
 
-export function StartCvForm({ action, initialState = {} }: StartProps) {
+export function StartCvForm({ action, jobId, initialState = {} }: StartProps) {
   const [state, formAction, pending] = useActionState(action, initialState)
 
   return (
     <form action={formAction} className={styles.form}>
+      {jobId && <input type="hidden" name="jobId" value={jobId} />}
+      {state.jobGone && (
+        <p role="alert" className={styles.problem}>
+          This job is no longer listed. {/* The jobs area is another zone, so a plain link. */}
+          <a href="/jobs">Choose another job</a>
+        </p>
+      )}
       {state.needsProfile && (
         <p role="alert" className={styles.problem}>
           Save your profile before asking for a CV.{' '}
@@ -29,7 +38,7 @@ export function StartCvForm({ action, initialState = {} }: StartProps) {
         </p>
       )}
       <button type="submit" disabled={pending}>
-        Write my CV
+        {jobId ? 'Write a CV for this job' : 'Write my CV'}
       </button>
     </form>
   )

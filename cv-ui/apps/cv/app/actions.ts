@@ -7,17 +7,33 @@ import { answerErrors, readAnswers, typedAnswers, type Question } from './cvRequ
 
 const SORRY = 'Sorry, something went wrong. Try again later.'
 
-export type StartState = { needsProfile?: boolean; error?: string }
+export type StartState = { needsProfile?: boolean; jobGone?: boolean; error?: string }
 
-/** Asks for a CV, then shows its page. A form action, so it works without javascript. */
-export async function startCv(_previous: StartState, _data: FormData): Promise<StartState> {
+/** The job the form names, from the jobs area; none for a general CV. */
+function jobIdFrom(data: FormData): number | undefined {
+  const jobId = Number(data.get('jobId'))
+  return Number.isInteger(jobId) && jobId > 0 ? jobId : undefined
+}
+
+/**
+ * Asks for a CV, then shows its page: a general one, or one aimed at the job the form names. A form
+ * action, so it works without javascript.
+ */
+export async function startCv(_previous: StartState, data: FormData): Promise<StartState> {
   const { accessToken } = await requireSession(BASE_PATH)
+  const jobId = jobIdFrom(data)
 
   let id: number
   try {
-    const { data, response } = await apiClient(accessToken).POST('/cv-requests')
-    if (!data) return response.status === 409 ? { needsProfile: true } : { error: SORRY }
-    id = data.id
+    const api = apiClient(accessToken)
+    const { data: started, response } = jobId
+      ? await api.POST('/cv-requests', { body: { jobId } })
+      : await api.POST('/cv-requests')
+    if (!started) {
+      if (response.status === 409) return { needsProfile: true }
+      return response.status === 404 ? { jobGone: true } : { error: SORRY }
+    }
+    id = started.id
   } catch {
     return { error: SORRY }
   }

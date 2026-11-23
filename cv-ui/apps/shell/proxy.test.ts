@@ -14,7 +14,12 @@ describe('shell proxy', () => {
 
   beforeEach(() => {
     jest.mocked(sessionProxy).mockResolvedValue(NextResponse.next())
-    process.env = { ...env, PROFILE_URL: 'http://profile:3001', CV_URL: 'http://cv:3002' }
+    process.env = {
+      ...env,
+      PROFILE_URL: 'http://profile:3001',
+      CV_URL: 'http://cv:3002',
+      JOBS_URL: 'http://jobs:3003',
+    }
   })
 
   afterAll(() => {
@@ -34,6 +39,19 @@ describe('shell proxy', () => {
     ['/cv/requests/7/events', 'http://cv:3002/cv/requests/7/events'],
   ])('routes %s to the cv zone', async (path, expected) => {
     expect(await rewrittenTo(proxy(request(path)))).toBe(expected)
+  })
+
+  it.each([
+    ['/jobs', 'http://jobs:3003/jobs'],
+    ['/jobs?remoteOnly=on&location=UK', 'http://jobs:3003/jobs?remoteOnly=on&location=UK'],
+  ])('routes %s to the jobs zone', async (path, expected) => {
+    expect(await rewrittenTo(proxy(request(path)))).toBe(expected)
+  })
+
+  it('defaults the jobs zone to its local dev port', async () => {
+    delete process.env.JOBS_URL
+
+    expect(await rewrittenTo(proxy(request('/jobs')))).toBe('http://localhost:3003/jobs')
   })
 
   it('defaults the cv zone to its local dev port', async () => {
@@ -57,6 +75,7 @@ describe('shell proxy', () => {
   it('does not mistake a path that only starts like a zone for it', async () => {
     expect(await rewrittenTo(proxy(request('/profiles')))).toBeNull()
     expect(await rewrittenTo(proxy(request('/cvs')))).toBeNull()
+    expect(await rewrittenTo(proxy(request('/jobsearch')))).toBeNull()
   })
 
   it('leaves zone sessions to the zone, which refreshes them itself', async () => {

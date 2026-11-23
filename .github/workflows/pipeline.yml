@@ -37,6 +37,9 @@ jobs:
           - image: cv-cv
             context: cv-ui
             app: cv
+          - image: cv-jobs
+            context: cv-ui
+            app: jobs
     permissions:
       contents: read
       packages: write

@@ -6,9 +6,10 @@ import { sessionProxy } from '@cv/auth/proxy'
 const zones = {
   profile: () => process.env.PROFILE_URL ?? 'http://localhost:3001',
   cv: () => process.env.CV_URL ?? 'http://localhost:3002',
+  jobs: () => process.env.JOBS_URL ?? 'http://localhost:3003',
 }
 
-const zonePath = /^\/(profile|cv)(\/|$)/
+const zonePath = /^\/(profile|cv|jobs)(\/|$)/
 
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl

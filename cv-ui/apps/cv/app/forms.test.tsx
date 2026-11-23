@@ -13,6 +13,26 @@ describe('StartCvForm', () => {
     expect(action).toHaveBeenCalled()
   })
 
+  it('asks for a CV aimed at a job, sending which job with the form', async () => {
+    const action = jest.fn(async (_state: object, _data: FormData) => ({}))
+    render(<StartCvForm action={action} jobId={42} />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Write a CV for this job' }))
+
+    expect(action.mock.calls[0]![1].get('jobId')).toBe('42')
+  })
+
+  it('says when the job is no longer listed, sending the candidate back to their jobs', () => {
+    render(<StartCvForm action={jest.fn()} jobId={42} initialState={{ jobGone: true }} />)
+
+    expect(screen.getByRole('alert')).toHaveTextContent('This job is no longer listed.')
+    // The jobs area is another zone, so a plain link.
+    expect(screen.getByRole('link', { name: 'Choose another job' })).toHaveAttribute(
+      'href',
+      '/jobs',
+    )
+  })
+
   it('sends the candidate to their profile when they have none', () => {
     render(<StartCvForm action={jest.fn()} initialState={{ needsProfile: true }} />)
 
