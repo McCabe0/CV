@@ -3,12 +3,14 @@ package com.skill2career.app.wiring
 import com.skill2career.adapter.agents.CvGuide
 import com.skill2career.adapter.agents.FileCvGuide
 import com.skill2career.adapter.agents.LlmCritic
+import com.skill2career.adapter.agents.LlmFitExplainer
 import com.skill2career.adapter.agents.LlmInterviewer
 import com.skill2career.adapter.agents.LlmWriter
 import com.skill2career.adapter.llm.LlmClient
 import com.skill2career.adapter.llm.LlmClients
 import com.skill2career.adapter.llm.LlmProperties
 import com.skill2career.adapter.messaging.CvWorkListener
+import com.skill2career.adapter.messaging.FitWorkListener
 import com.skill2career.app.role.AppRole
 import com.skill2career.app.role.ConditionalOnRole
 import com.skill2career.application.cv.AdvanceCvRequest
@@ -19,17 +21,26 @@ import com.skill2career.application.cv.InterviewCandidate
 import com.skill2career.application.cv.Interviewer
 import com.skill2career.application.cv.WriteCv
 import com.skill2career.application.cv.Writer
+import com.skill2career.application.job.FitExplainer
+import com.skill2career.application.job.FitSummaryStore
+import com.skill2career.application.job.GiveUpOnFitSummary
+import com.skill2career.application.job.JobStore
+import com.skill2career.application.job.TrackedCompanyStore
+import com.skill2career.application.job.WriteFitSummary
 import com.skill2career.application.profile.ProfileStore
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
 
-/** The cv-worker: the three agents, on the LLM `llm.provider` names, fed from kafka. See decisions/agents.md. */
+/**
+ * The cv-worker: the three CV agents, and the fit summary, on the LLM `llm.provider` names, fed from
+ * kafka. See decisions/agents.md.
+ */
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnRole(AppRole.CV_WORKER)
 @EnableConfigurationProperties(LlmProperties::class)
-@Import(CvWorkListener::class)
+@Import(CvWorkListener::class, FitWorkListener::class)
 class CvWorkerWiring {
     @Bean
     fun llm(properties: LlmProperties): LlmClient = LlmClients.create(properties)
@@ -76,4 +87,19 @@ class CvWorkerWiring {
 
     @Bean
     fun giveUpOnCvRequest(requests: CvRequestStore): GiveUpOnCvRequest = GiveUpOnCvRequest(requests)
+
+    @Bean
+    fun fitExplainer(llm: LlmClient): FitExplainer = LlmFitExplainer(llm)
+
+    @Bean
+    fun writeFitSummary(
+        summaries: FitSummaryStore,
+        profiles: ProfileStore,
+        jobs: JobStore,
+        companies: TrackedCompanyStore,
+        explainer: FitExplainer,
+    ): WriteFitSummary = WriteFitSummary(summaries, profiles, jobs, companies, explainer)
+
+    @Bean
+    fun giveUpOnFitSummary(summaries: FitSummaryStore): GiveUpOnFitSummary = GiveUpOnFitSummary(summaries)
 }

@@ -27,6 +27,9 @@ object Topics {
 
     /** One company's board for a job-worker to crawl. Keyed by the company. */
     const val JOBS_CRAWL = "jobs.crawl"
+
+    /** A candidate's summary of why a job fits them, for the cv-worker to write. Keyed by the summary. */
+    const val JOBS_FIT = "jobs.fit"
 }
 
 internal val json = JsonMapper.builder().addModule(KotlinModule.Builder().build()).build()
@@ -71,6 +74,14 @@ class OutboxEntity(
                 eventId = message.eventId,
                 topic = Topics.JOBS_CRAWL,
                 messageKey = message.companyId.toString(),
+                payload = message.write(),
+            )
+
+        fun fit(message: FitMessage) =
+            OutboxEntity(
+                eventId = message.eventId,
+                topic = Topics.JOBS_FIT,
+                messageKey = message.summaryId.toString(),
                 payload = message.write(),
             )
 

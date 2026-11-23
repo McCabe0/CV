@@ -3,6 +3,7 @@ package com.skill2career.app.wiring
 import com.skill2career.adapter.messaging.OutboxRelay
 import com.skill2career.adapter.messaging.Topics
 import com.skill2career.adapter.persistence.cv.CvRequestJpaAdapter
+import com.skill2career.adapter.persistence.job.FitSummaryJpaAdapter
 import com.skill2career.adapter.persistence.job.JobJpaAdapter
 import com.skill2career.adapter.persistence.job.TrackedCompanyJpaAdapter
 import com.skill2career.adapter.persistence.profile.ProfileJpaAdapter
@@ -32,6 +33,7 @@ import org.springframework.scheduling.annotation.Scheduled
     CvRequestJpaAdapter::class,
     TrackedCompanyJpaAdapter::class,
     JobJpaAdapter::class,
+    FitSummaryJpaAdapter::class,
     OutboxRelay::class,
 )
 class CommonWiring {
@@ -54,6 +56,13 @@ class CommonWiring {
         @Value("\${kafka.partitions:3}") partitions: Int,
         @Value("\${kafka.replicas:1}") replicas: Int,
     ): NewTopic = topic(Topics.CV_PROGRESS, partitions, replicas)
+
+    /** Written by the cv-worker, as it holds the LLM. */
+    @Bean
+    fun jobsFitTopic(
+        @Value("\${kafka.partitions:3}") partitions: Int,
+        @Value("\${kafka.replicas:1}") replicas: Int,
+    ): NewTopic = topic(Topics.JOBS_FIT, partitions, replicas)
 
     @Bean
     fun outboxSchedule(relay: OutboxRelay): OutboxSchedule = OutboxSchedule(relay)

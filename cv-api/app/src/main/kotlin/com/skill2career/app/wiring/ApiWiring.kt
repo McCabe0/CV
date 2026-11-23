@@ -5,6 +5,7 @@ import com.skill2career.adapter.persistence.job.PostgresJobIndex
 import com.skill2career.adapter.web.ApiExceptionHandler
 import com.skill2career.adapter.web.cv.CvRequestResource
 import com.skill2career.adapter.web.cv.ProgressStreams
+import com.skill2career.adapter.web.job.JobFitResource
 import com.skill2career.adapter.web.job.JobMatchResource
 import com.skill2career.adapter.web.profile.ProfileResource
 import com.skill2career.app.role.AppRole
@@ -13,8 +14,12 @@ import com.skill2career.application.cv.AnswerQuestions
 import com.skill2career.application.cv.CvRequestStore
 import com.skill2career.application.cv.FindCvRequest
 import com.skill2career.application.cv.RequestCv
+import com.skill2career.application.job.FindFitSummary
+import com.skill2career.application.job.FitSummaryStore
 import com.skill2career.application.job.JobIndex
+import com.skill2career.application.job.JobStore
 import com.skill2career.application.job.MatchJobs
+import com.skill2career.application.job.RequestFitSummary
 import com.skill2career.application.profile.FindProfile
 import com.skill2career.application.profile.ProfileStore
 import com.skill2career.application.profile.SaveProfile
@@ -34,6 +39,7 @@ import org.springframework.context.annotation.Import
     ProgressStreams::class,
     CvProgressListener::class,
     JobMatchResource::class,
+    JobFitResource::class,
     PostgresJobIndex::class,
     ApiExceptionHandler::class,
 )
@@ -64,4 +70,14 @@ class ApiWiring {
         profiles: ProfileStore,
         index: JobIndex,
     ): MatchJobs = MatchJobs(profiles, index)
+
+    @Bean
+    fun requestFitSummary(
+        profiles: ProfileStore,
+        jobs: JobStore,
+        summaries: FitSummaryStore,
+    ): RequestFitSummary = RequestFitSummary(profiles, jobs, summaries)
+
+    @Bean
+    fun findFitSummary(summaries: FitSummaryStore): FindFitSummary = FindFitSummary(summaries)
 }
