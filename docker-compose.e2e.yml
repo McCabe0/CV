@@ -1,12 +1,20 @@
 # The stack for the playwright journeys, over docker-compose.yml:
-#   docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --build --wait shell cv-worker
+#   docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --build --wait shell cv-worker job-worker
 # The cv-worker's LLM is wiremock playing gemini, so the journeys cost nothing, need no key, and get the
-# same interview, draft and review every run: cv-ui/e2e/wiremock/mappings. See decisions/ui.md.
+# same interview, draft, review and fit summary every run: cv-ui/e2e/wiremock/mappings. The job-worker
+# crawls wiremock playing the four job boards, a few seconds after it starts: cv-ui/e2e/boards/mappings.
+# It crawls once a day, so on a stack that has crawled the real boards today the journeys would not see
+# the played jobs: locally, run it as its own project (docker compose -p cv-e2e ...). See decisions/ui.md.
 services:
   gemini:
     image: wiremock/wiremock:3.13.2
     volumes:
       - ./cv-ui/e2e/wiremock:/home/wiremock:ro
+
+  boards:
+    image: wiremock/wiremock:3.13.2
+    volumes:
+      - ./cv-ui/e2e/boards:/home/wiremock:ro
 
   cv-worker:
     depends_on:
@@ -16,3 +24,14 @@ services:
       LLM_PROVIDER: gemini
       GEMINI_API_KEY: e2e-not-a-real-key
       LLM_GEMINI_BASEURL: http://gemini:8080/v1beta
+
+  job-worker:
+    depends_on:
+      boards:
+        condition: service_started
+    environment:
+      JOBS_CRAWL_FIRST_CHECK_MS: 5000
+      JOBS_GREENHOUSE_URL: http://boards:8080
+      JOBS_LEVER_URL: http://boards:8080
+      JOBS_ASHBY_URL: http://boards:8080
+      JOBS_WORKABLE_URL: http://boards:8080

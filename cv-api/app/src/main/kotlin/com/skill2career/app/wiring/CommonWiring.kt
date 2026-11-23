@@ -3,6 +3,9 @@ package com.skill2career.app.wiring
 import com.skill2career.adapter.messaging.OutboxRelay
 import com.skill2career.adapter.messaging.Topics
 import com.skill2career.adapter.persistence.cv.CvRequestJpaAdapter
+import com.skill2career.adapter.persistence.job.FitSummaryJpaAdapter
+import com.skill2career.adapter.persistence.job.JobJpaAdapter
+import com.skill2career.adapter.persistence.job.TrackedCompanyJpaAdapter
 import com.skill2career.adapter.persistence.profile.ProfileJpaAdapter
 import com.skill2career.adapter.web.security.SecurityConfiguration
 import org.apache.kafka.clients.admin.NewTopic
@@ -24,8 +27,23 @@ import org.springframework.scheduling.annotation.Scheduled
 @EnableScheduling
 @EntityScan("com.skill2career.adapter.persistence", "com.skill2career.adapter.messaging")
 @EnableJpaRepositories("com.skill2career.adapter.persistence", "com.skill2career.adapter.messaging")
-@Import(SecurityConfiguration::class, ProfileJpaAdapter::class, CvRequestJpaAdapter::class, OutboxRelay::class)
+@Import(
+    SecurityConfiguration::class,
+    ProfileJpaAdapter::class,
+    CvRequestJpaAdapter::class,
+    TrackedCompanyJpaAdapter::class,
+    JobJpaAdapter::class,
+    FitSummaryJpaAdapter::class,
+    OutboxRelay::class,
+)
 class CommonWiring {
+    /** Partitions are also how many job-workers crawl at once. */
+    @Bean
+    fun jobsCrawlTopic(
+        @Value("\${kafka.partitions:3}") partitions: Int,
+        @Value("\${kafka.replicas:1}") replicas: Int,
+    ): NewTopic = topic(Topics.JOBS_CRAWL, partitions, replicas)
+
     /** Partitions are how far the cv-worker can scale out: one consumer each. See decisions/messaging.md. */
     @Bean
     fun cvRequestedTopic(
@@ -38,6 +56,13 @@ class CommonWiring {
         @Value("\${kafka.partitions:3}") partitions: Int,
         @Value("\${kafka.replicas:1}") replicas: Int,
     ): NewTopic = topic(Topics.CV_PROGRESS, partitions, replicas)
+
+    /** Written by the cv-worker, as it holds the LLM. */
+    @Bean
+    fun jobsFitTopic(
+        @Value("\${kafka.partitions:3}") partitions: Int,
+        @Value("\${kafka.replicas:1}") replicas: Int,
+    ): NewTopic = topic(Topics.JOBS_FIT, partitions, replicas)
 
     @Bean
     fun outboxSchedule(relay: OutboxRelay): OutboxSchedule = OutboxSchedule(relay)

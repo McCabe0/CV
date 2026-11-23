@@ -5,15 +5,20 @@ import com.github.tomakehurst.wiremock.client.WireMock.aResponse
 import com.github.tomakehurst.wiremock.client.WireMock.containing
 import com.github.tomakehurst.wiremock.client.WireMock.okJson
 import com.github.tomakehurst.wiremock.client.WireMock.post
+import com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor
 import com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration.options
 import com.skill2career.app.integration.container.Containers
 import com.skill2career.application.cv.AnswerQuestions
 import com.skill2career.application.cv.CvRequestStore
 import com.skill2career.application.cv.RequestCv
+import com.skill2career.application.job.JobStore
+import com.skill2career.application.job.TrackedCompanyStore
 import com.skill2career.application.profile.ProfileStore
 import com.skill2career.domain.cv.Answer
 import com.skill2career.domain.cv.CvStatus
+import com.skill2career.domain.job.Job
+import com.skill2career.domain.job.JobPosting
 import com.skill2career.domain.profile.Fact
 import com.skill2career.domain.profile.OwnerId
 import com.skill2career.domain.profile.ProfileFixtures.profile
@@ -29,6 +34,7 @@ import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.context.TestPropertySource
 import tools.jackson.databind.json.JsonMapper
 import java.time.Duration
+import java.time.Instant
 import java.util.UUID
 import kotlin.test.Test
 
@@ -67,6 +73,33 @@ class CvPipelineIntegrationTest : KeycloakIntegrationBase() {
 
     @Autowired
     lateinit var requests: CvRequestStore
+
+    @Autowired
+    lateinit var jobs: JobStore
+
+    @Autowired
+    lateinit var companies: TrackedCompanyStore
+
+    @Test
+    fun `a CV for one listed job is written aimed at that job, and keeps which job it was for`() {
+        agentsWriteACv()
+        // Added last, so wiremock answers with it: nothing to ask, straight on to the writing.
+        agentAnswers("You help a candidate", """{"questions": []}""")
+        val monzo = companies.all().single { it.name == "Monzo" }
+        val externalId = "cv-for-${UUID.randomUUID()}"
+        val posting = JobPosting(externalId, "Payments Platform Engineer", "London", "We need Kafka and Terraform.", "https://monzo.com/x")
+        jobs.saveAll(listOf(Job(companyId = monzo.id!!, source = monzo.source, posting = posting, firstSeenAt = Instant.now())))
+        val jobId = jobs.forCompany(monzo.id!!).single { it.posting.externalId == externalId }.id!!
+
+        val id = requestCv.request(candidate(), jobId).id!!
+
+        waitFor(id, CvStatus.COMPLETED)
+        assertThat(requests.find(id)!!.jobId).isEqualTo(jobId)
+        val toWriter = gemini.findAll(postRequestedFor(urlPathMatching("/v1beta/.*")).withRequestBody(containing("You write CVs")))
+        assertThat(
+            toWriter.single().bodyAsString,
+        ).contains("aim this CV at the job", "Payments Platform Engineer", "We need Kafka and Terraform.")
+    }
 
     private val json = JsonMapper.builder().build()
 

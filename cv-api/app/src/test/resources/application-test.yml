@@ -5,3 +5,14 @@ app:
 llm:
   gemini:
     api-key: test-key-not-real
+
+# No test reaches a real job board: the job-worker's daily crawl is not asked for, and the crawl test asks
+# for it itself, with wiremock playing the boards.
+jobs:
+  crawl:
+    first-check-ms: 86400000
+  boards:
+    greenhouse-url: http://localhost:9
+    lever-url: http://localhost:9
+    ashby-url: http://localhost:9
+    workable-url: http://localhost:9

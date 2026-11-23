@@ -1,7 +1,7 @@
 # Builds one app. docker build --build-arg APP=shell -t cv-shell .
 FROM node:24-alpine@sha256:a34ab6d7f6f4813f4d0c5469d74685604b962fbdbf5793a7bc7b4998ecb867c8 AS builder
 ARG APP
-RUN test -n "$APP" || (echo "APP build arg is required: shell or profile" && false)
+RUN test -n "$APP" || (echo "APP build arg is required: shell, profile, cv or jobs" && false)
 WORKDIR /app
 RUN corepack enable
 

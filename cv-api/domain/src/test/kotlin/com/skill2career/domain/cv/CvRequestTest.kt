@@ -14,6 +14,14 @@ import kotlin.test.Test
 
 class CvRequestTest {
     @Test
+    fun `a CV for one job keeps which job, through every step`() {
+        val request = CvRequest.requested(OWNER, jobId = 42).asked(emptyList())
+
+        assertThat(request.jobId).isEqualTo(42)
+        assertThat(CvRequest.requested(OWNER).jobId).isNull()
+    }
+
+    @Test
     fun `starts requested, for its owner`() {
         val request = CvRequest.requested(OWNER)
 

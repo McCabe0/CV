@@ -26,6 +26,21 @@ cv:
     attempts: 4
     retry-delay-ms: 30000
 
+# The job-worker asks for the day's crawl a minute after it starts, then each hour; the first ask each day
+# queues it. A board that fails is tried this many times in all, this far apart, then parked on
+# jobs.crawl.dlq until the next day. Board urls are overridden only to play them. See decisions/jobs.md.
+jobs:
+  crawl:
+    first-check-ms: 60000
+    check-every-ms: 3600000
+    attempts: 3
+    retry-delay-ms: 60000
+  boards:
+    greenhouse-url: ${JOBS_GREENHOUSE_URL:https://boards-api.greenhouse.io}
+    lever-url: ${JOBS_LEVER_URL:https://api.lever.co}
+    ashby-url: ${JOBS_ASHBY_URL:https://api.ashbyhq.com}
+    workable-url: ${JOBS_WORKABLE_URL:https://apply.workable.com}
+
 spring:
   # Bootstrap servers from SPRING_KAFKA_BOOTSTRAP_SERVERS. See decisions/messaging.md.
   kafka:

@@ -14,6 +14,8 @@ data class CvRequest(
     val rounds: List<Round> = emptyList(),
     val cv: Cv? = null,
     val failure: String? = null,
+    /** The job this CV is aimed at; null for a general CV, aimed at the profile's target role. */
+    val jobId: Long? = null,
 ) {
     /** The interviewer asked these. None means the profile already says enough. */
     fun asked(questions: List<Question>): CvRequest {
@@ -75,6 +77,9 @@ data class CvRequest(
         const val MAX_QUESTIONS = 5
         const val MAX_ROUNDS = 3
 
-        fun requested(ownerId: OwnerId) = CvRequest(ownerId = ownerId, status = CvStatus.REQUESTED)
+        fun requested(
+            ownerId: OwnerId,
+            jobId: Long? = null,
+        ) = CvRequest(ownerId = ownerId, status = CvStatus.REQUESTED, jobId = jobId)
     }
 }

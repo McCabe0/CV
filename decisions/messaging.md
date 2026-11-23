@@ -11,6 +11,7 @@ Apache Kafka, with no zookeeper. Topics:
 | `cv.requested` | cv request id | api | cv-worker |
 | `cv.progress` | cv request id | cv-worker | api (to server sent events) |
 | `jobs.crawl` | company id | job-worker's scheduler | job-worker |
+| `jobs.fit` | fit summary id | api | cv-worker |
 
 Each has a `.retry` and a `.dlq` topic. A failed message is retried with back off, then parked in the
 dead letter topic, where it can be seen and replayed. The key keeps one request's events in order.
@@ -53,3 +54,21 @@ to the streams it holds. No shared cache is needed.
   progress listener reads only new messages (`auto.offset.reset=latest`), one group per api instance.
 - `GET /api/cv-requests/{id}/events` ends once the request is completed or failed, and after 15 minutes;
   a browser still there reconnects.
+
+## as built (slice 4)
+- `jobs.crawl` carries `{eventId, companyId}`, keyed by the company, written to the outbox by the
+  job-worker's daily schedule, one per tracked company, so the crawls spread over every job-worker.
+- the job-worker's listener (group `job-worker`) crawls the company's board, skipping an event it has
+  handled. A failure retries on ONE `jobs.crawl.retry` topic, then parks on `jobs.crawl.dlq`; the
+  company's jobs stay as they were. See decisions/jobs.md.
+
+## as built (slice 5)
+- `jobs.fit` carries `{eventId, summaryId}`, keyed by the summary, written to the outbox with the
+  summary when a candidate first asks why a job fits (`POST /jobs/{id}/fit`, 202). The cv-worker writes
+  it, as it holds the LLM (group `fit-writer`). The candidate reads `GET /jobs/{id}/fit` until it is
+  READY or FAILED: a summary takes seconds, so checking back is enough, without a stream.
+- an error retries on ONE `jobs.fit.retry` topic, 30s apart, 3 tries in all (`jobs.fit.attempts`,
+  `jobs.fit.retry-delay-ms`), then parks on `jobs.fit.dlq` and the summary fails with "The AI was too
+  busy to write this. Please ask again later." Asking again writes it afresh. A summary that does not
+  exist goes to the dlq at once.
+- `fit_summaries` holds one row per candidate and job, so two asks at once cannot both queue one.

@@ -1,0 +1,22 @@
+{
+  "name": "@cv/jobs",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "next dev --port 3003",
+    "build": "next build && cp -r .next/static .next/standalone/apps/jobs/.next/",
+    "start": "PORT=3003 node .next/standalone/apps/jobs/server.js",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "jest",
+    "mutation": "stryker run"
+  },
+  "dependencies": {
+    "@cv/api-client": "workspace:*",
+    "@cv/auth": "workspace:*",
+    "@cv/ui": "workspace:*",
+    "@next/env": "16.4.5",
+    "next": "16.4.5",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  }
+}

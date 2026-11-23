@@ -24,3 +24,22 @@ export async function signInOnKeycloak(page: Page, username: string) {
   await page.getByLabel('Password', { exact: true }).fill('test')
   await page.getByRole('button', { name: 'Sign In' }).click()
 }
+
+/**
+ * Signs in as the candidate, and saves a profile, so there is something to write a CV from and to match
+ * jobs against. Its skills, Kotlin and PostgreSQL, are what the played job boards' jobs ask for.
+ */
+export async function withProfile(page: Page) {
+  await page.goto('/profile')
+  await signInOnKeycloak(page, 'candidate')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Your profile')
+  await page.waitForLoadState('networkidle')
+  await page.getByRole('textbox', { name: 'Full name', exact: true }).fill('Casey Candidate')
+  await page.getByRole('textbox', { name: 'Skills', exact: true }).fill('Kotlin, PostgreSQL')
+  await page
+    .getByRole('textbox', { name: 'Experience', exact: true })
+    .fill('Five years building payment APIs.')
+  await page.getByRole('textbox', { name: 'Education', exact: true }).fill('BSc Computer Science')
+  await page.getByRole('button', { name: 'Save profile' }).click()
+  await expect(page.getByRole('status')).toContainText('Your profile has been saved.')
+}

@@ -40,12 +40,18 @@ class CvRequestResource(
     private val answerQuestions: AnswerQuestions,
     private val streams: ProgressStreams,
 ) {
-    @Operation(summary = "Ask for a CV", description = "409 until you have saved a profile. Follow it at its Location.")
+    @Operation(
+        summary = "Ask for a CV",
+        description =
+            "A general CV, aimed at your target role, or, with a jobId, one aimed at that listed job. 409 until " +
+                "you have saved a profile; 404 for a job no longer listed. Follow it at its Location.",
+    )
     @PostMapping
     fun request(
         @AuthenticationPrincipal jwt: Jwt,
+        @RequestBody(required = false) body: CvRequestBody?,
     ): ResponseEntity<CvRequestResponse> {
-        val request = requestCv.request(jwt.ownerId())
+        val request = requestCv.request(jwt.ownerId(), body?.jobId)
         val location =
             ServletUriComponentsBuilder
                 .fromCurrentContextPath()

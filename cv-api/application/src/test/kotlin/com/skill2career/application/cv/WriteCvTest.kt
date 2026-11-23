@@ -1,5 +1,8 @@
 package com.skill2career.application.cv
 
+import com.skill2career.application.job.InMemoryJobStore
+import com.skill2career.application.job.InMemoryTrackedCompanyStore
+import com.skill2career.application.job.ListedJobs
 import com.skill2career.application.profile.InMemoryProfileStore
 import com.skill2career.domain.cv.CvFixtures.awaitingAnswers
 import com.skill2career.domain.cv.CvFixtures.cv
@@ -9,6 +12,10 @@ import com.skill2career.domain.cv.CvFixtures.writing
 import com.skill2career.domain.cv.CvStatus
 import com.skill2career.domain.cv.Review
 import com.skill2career.domain.cv.Round
+import com.skill2career.domain.job.JobFixtures.COMPANY
+import com.skill2career.domain.job.JobFixtures.FIRST_SEEN
+import com.skill2career.domain.job.JobFixtures.job
+import com.skill2career.domain.job.JobFixtures.posting
 import com.skill2career.domain.profile.Fact
 import com.skill2career.domain.profile.ProfileFixtures.OWNER
 import com.skill2career.domain.profile.ProfileFixtures.profile
@@ -18,6 +25,8 @@ import kotlin.test.Test
 class WriteCvTest {
     private val profiles = InMemoryProfileStore().apply { save(profile()) }
     private val requests = InMemoryCvRequestStore()
+    private val jobs = InMemoryJobStore()
+    private val listedJobs = ListedJobs(jobs, InMemoryTrackedCompanyStore(COMPANY))
 
     /** A writer that numbers its drafts, and keeps every brief it was given. */
     private val briefs = mutableListOf<Brief>()
@@ -37,7 +46,49 @@ class WriteCvTest {
         critic: Critic,
         writer: Writer = this.writer,
         id: Long = requests.save(writing().copy(id = null)).id!!,
-    ) = WriteCv(requests, profiles, writer, critic).write(id)
+    ) = WriteCv(requests, profiles, writer, critic, listedJobs).write(id)
+
+    @Test
+    fun `a CV for a job gives the writer and the critic that job, with its company`() {
+        jobs.saveAll(listOf(job(posting = posting("1", title = "Staff Engineer"))))
+        val jobId = jobs.forCompany(COMPANY.id!!).single().id!!
+        var criticBrief: Brief? = null
+
+        write(
+            Critic { brief, _ ->
+                criticBrief = brief
+                review()
+            },
+            id = requests.save(writing().copy(id = null, jobId = jobId)).id!!,
+        )
+
+        assertThat(
+            briefs
+                .single()
+                .job!!
+                .job.posting.title,
+        ).isEqualTo("Staff Engineer")
+        assertThat(briefs.single().job!!.company).isEqualTo("Monzo")
+        assertThat(criticBrief!!.job).isEqualTo(briefs.single().job)
+    }
+
+    @Test
+    fun `a CV for a job that stopped being listed while it was written is still aimed at it`() {
+        jobs.saveAll(listOf(job(posting = posting("1"), inactiveSince = FIRST_SEEN)))
+        val jobId = jobs.forCompany(COMPANY.id!!).single().id!!
+
+        val request = write(critic(review()), id = requests.save(writing().copy(id = null, jobId = jobId)).id!!)
+
+        assertThat(request.status).isEqualTo(CvStatus.COMPLETED)
+        assertThat(briefs.single().job).isNotNull()
+    }
+
+    @Test
+    fun `a general CV gives the writer no job`() {
+        write(critic(review()))
+
+        assertThat(briefs.single().job).isNull()
+    }
 
     @Test
     fun `finishes after one round when the critic approves the first draft`() {
@@ -143,7 +194,7 @@ class WriteCvTest {
     fun `fails the request when the profile has gone`() {
         val id = requests.save(writing().copy(id = null)).id!!
 
-        val request = WriteCv(requests, InMemoryProfileStore(), writer, critic()).write(id)
+        val request = WriteCv(requests, InMemoryProfileStore(), writer, critic(), listedJobs).write(id)
 
         assertThat(request.status).isEqualTo(CvStatus.FAILED)
     }

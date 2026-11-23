@@ -49,6 +49,35 @@ describe('startCv', () => {
     POST.mockRejectedValueOnce(new TypeError('fetch failed'))
     expect(await startCv({}, new FormData())).toEqual({ error: SORRY })
   })
+
+  const forJob = (jobId: string) => {
+    const data = new FormData()
+    data.set('jobId', jobId)
+    return data
+  }
+
+  it('asks for a CV aimed at the job the form names', async () => {
+    POST.mockResolvedValue({ data: { id: 7 }, response: { status: 202 } })
+
+    await expect(startCv({}, forJob('42'))).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(POST).toHaveBeenCalledWith('/cv-requests', { body: { jobId: 42 } })
+    expect(redirectInZone).toHaveBeenCalledWith('/cv', '/requests/7')
+  })
+
+  it('asks for a general CV when the job is not a job id', async () => {
+    POST.mockResolvedValue({ data: { id: 7 }, response: { status: 202 } })
+
+    await expect(startCv({}, forJob('abc'))).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(POST).toHaveBeenCalledWith('/cv-requests')
+  })
+
+  it('says when the job is no longer listed', async () => {
+    POST.mockResolvedValue({ data: undefined, error: {}, response: { status: 404 } })
+
+    expect(await startCv({}, forJob('42'))).toEqual({ jobGone: true })
+  })
 })
 
 describe('answerQuestions', () => {

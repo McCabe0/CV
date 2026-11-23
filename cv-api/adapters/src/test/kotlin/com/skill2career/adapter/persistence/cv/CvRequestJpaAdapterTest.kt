@@ -4,6 +4,8 @@ import com.skill2career.adapter.messaging.OutboxRepo
 import com.skill2career.adapter.messaging.RequestMessage
 import com.skill2career.adapter.messaging.Topics
 import com.skill2career.adapter.persistence.PostgresTest
+import com.skill2career.adapter.persistence.job.JobJpaAdapter
+import com.skill2career.adapter.persistence.job.TrackedCompanyJpaAdapter
 import com.skill2career.domain.cv.Answer
 import com.skill2career.domain.cv.CvFixtures.awaitingAnswers
 import com.skill2career.domain.cv.CvFixtures.cv
@@ -15,19 +17,38 @@ import com.skill2career.domain.cv.CvStatus
 import com.skill2career.domain.cv.Issue
 import com.skill2career.domain.cv.IssueKind
 import com.skill2career.domain.cv.Round
+import com.skill2career.domain.job.JobFixtures.job
+import com.skill2career.domain.job.JobFixtures.posting
 import com.skill2career.domain.profile.ProfileFixtures.OWNER
 import org.assertj.core.api.Assertions.assertThat
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Import
 import kotlin.test.Test
 
-@Import(CvRequestJpaAdapter::class)
+@Import(CvRequestJpaAdapter::class, JobJpaAdapter::class, TrackedCompanyJpaAdapter::class)
 class CvRequestJpaAdapterTest : PostgresTest() {
     @Autowired
     lateinit var adapter: CvRequestJpaAdapter
 
     @Autowired
     lateinit var outbox: OutboxRepo
+
+    @Autowired
+    lateinit var jobs: JobJpaAdapter
+
+    @Autowired
+    lateinit var companies: TrackedCompanyJpaAdapter
+
+    @Test
+    fun `keeps which job a CV is for`() {
+        val monzo = companies.all().single { it.name == "Monzo" }
+        jobs.saveAll(listOf(job(company = monzo, posting = posting("cv-for-1"))))
+        val jobId = jobs.forCompany(monzo.id!!).single().id!!
+
+        val saved = adapter.save(CvRequest.requested(OWNER, jobId))
+
+        assertThat(adapter.find(saved.id!!)!!.jobId).isEqualTo(jobId)
+    }
 
     @Test
     fun `gives a new request its id`() {

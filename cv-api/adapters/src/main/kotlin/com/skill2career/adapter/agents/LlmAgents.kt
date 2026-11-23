@@ -64,8 +64,9 @@ class LlmWriter(
         return call.ask(
             "The writer",
             LlmRequest(
-                SYSTEM + Prompts.guide(guidance.guide),
+                SYSTEM + (brief.job?.let { FOR_A_JOB } ?: "") + Prompts.guide(guidance.guide),
                 Prompts.profile(brief.profile) +
+                    (brief.job?.let(Prompts::job) ?: "") +
                     (guidance.example?.let(Prompts::example) ?: "") +
                     (brief.lastRound?.let(Prompts::feedback) ?: ""),
                 Schema.cv,
@@ -75,6 +76,15 @@ class LlmWriter(
     }
 
     private companion object {
+        val FOR_A_JOB =
+            "\n" +
+                """
+                The candidate is applying for the job below: aim this CV at the job. Write the summary for it,
+                put first the skills and the bullets it asks for, and use its keywords where the facts support
+                them. The job is never a source of facts about the candidate: what it asks for that the profile
+                does not show stays off the CV.
+                """.trimIndent()
+
         val SYSTEM =
             """
             You write CVs, to the guide below. Use only what the profile and the candidate's answers say:
@@ -115,8 +125,10 @@ class LlmCritic(
             "The critic",
             LlmRequest(
                 // The guide, never the example: the critic checks facts against the profile alone.
-                SYSTEM + Prompts.guide(guide.forRole(brief.profile.targetRole).guide),
-                Prompts.profile(brief.profile) + "<draft>\n${Prompts.draft(draft)}</draft>\n",
+                SYSTEM + (brief.job?.let { FOR_A_JOB } ?: "") + Prompts.guide(guide.forRole(brief.profile.targetRole).guide),
+                Prompts.profile(brief.profile) +
+                    (brief.job?.let(Prompts::job) ?: "") +
+                    "<draft>\n${Prompts.draft(draft)}</draft>\n",
                 SCHEMA,
             ),
             Answer::class.java,
@@ -160,6 +172,15 @@ class LlmCritic(
             Score it from 0 to 100, against the guide. Approve it only if it is ready to send, with no
             invented fact.
             """.trimIndent()
+
+        val FOR_A_JOB =
+            "\n" +
+                """
+                The CV is for the job below. Check it against the job's keywords too: one the facts support but
+                the CV leaves out is MISSING_KEYWORD, and a summary not written for this job is GENERIC_SUMMARY.
+                The job is never a source of facts about the candidate: a claim found only in the job is an
+                INVENTED_FACT.
+                """.trimIndent()
     }
 }
 

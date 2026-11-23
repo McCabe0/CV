@@ -55,6 +55,7 @@ class CvRequestEntity(
     @Convert(converter = CvConverter::class)
     var cv: Cv?,
     var failure: String?,
+    var jobId: Long? = null,
     var createdAt: Instant = Instant.now(),
     var updatedAt: Instant = Instant.now(),
 ) {
@@ -74,6 +75,7 @@ class CvRequestEntity(
             rounds = rounds,
             cv = cv,
             failure = failure,
+            jobId = jobId,
         )
 
     companion object {
@@ -87,6 +89,7 @@ class CvRequestEntity(
                 rounds = request.rounds,
                 cv = request.cv,
                 failure = request.failure,
+                jobId = request.jobId,
             )
     }
 }

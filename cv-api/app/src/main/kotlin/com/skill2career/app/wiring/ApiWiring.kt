@@ -1,9 +1,12 @@
 package com.skill2career.app.wiring
 
 import com.skill2career.adapter.messaging.CvProgressListener
+import com.skill2career.adapter.persistence.job.PostgresJobIndex
 import com.skill2career.adapter.web.ApiExceptionHandler
 import com.skill2career.adapter.web.cv.CvRequestResource
 import com.skill2career.adapter.web.cv.ProgressStreams
+import com.skill2career.adapter.web.job.JobFitResource
+import com.skill2career.adapter.web.job.JobMatchResource
 import com.skill2career.adapter.web.profile.ProfileResource
 import com.skill2career.app.role.AppRole
 import com.skill2career.app.role.ConditionalOnRole
@@ -11,6 +14,12 @@ import com.skill2career.application.cv.AnswerQuestions
 import com.skill2career.application.cv.CvRequestStore
 import com.skill2career.application.cv.FindCvRequest
 import com.skill2career.application.cv.RequestCv
+import com.skill2career.application.job.FindFitSummary
+import com.skill2career.application.job.FitSummaryStore
+import com.skill2career.application.job.JobIndex
+import com.skill2career.application.job.JobStore
+import com.skill2career.application.job.MatchJobs
+import com.skill2career.application.job.RequestFitSummary
 import com.skill2career.application.profile.FindProfile
 import com.skill2career.application.profile.ProfileStore
 import com.skill2career.application.profile.SaveProfile
@@ -29,6 +38,9 @@ import org.springframework.context.annotation.Import
     CvRequestResource::class,
     ProgressStreams::class,
     CvProgressListener::class,
+    JobMatchResource::class,
+    JobFitResource::class,
+    PostgresJobIndex::class,
     ApiExceptionHandler::class,
 )
 class ApiWiring {
@@ -42,7 +54,8 @@ class ApiWiring {
     fun requestCv(
         profiles: ProfileStore,
         requests: CvRequestStore,
-    ): RequestCv = RequestCv(profiles, requests)
+        jobs: JobStore,
+    ): RequestCv = RequestCv(profiles, requests, jobs)
 
     @Bean
     fun findCvRequest(requests: CvRequestStore): FindCvRequest = FindCvRequest(requests)
@@ -52,4 +65,20 @@ class ApiWiring {
         requests: CvRequestStore,
         profiles: ProfileStore,
     ): AnswerQuestions = AnswerQuestions(requests, profiles)
+
+    @Bean
+    fun matchJobs(
+        profiles: ProfileStore,
+        index: JobIndex,
+    ): MatchJobs = MatchJobs(profiles, index)
+
+    @Bean
+    fun requestFitSummary(
+        profiles: ProfileStore,
+        jobs: JobStore,
+        summaries: FitSummaryStore,
+    ): RequestFitSummary = RequestFitSummary(profiles, jobs, summaries)
+
+    @Bean
+    fun findFitSummary(summaries: FitSummaryStore): FindFitSummary = FindFitSummary(summaries)
 }
