@@ -2,6 +2,7 @@ package com.skill2career.adapter.agents
 
 import com.skill2career.domain.cv.Cv
 import com.skill2career.domain.cv.Round
+import com.skill2career.domain.job.ListedJob
 import com.skill2career.domain.profile.Fact
 import com.skill2career.domain.profile.Profile
 
@@ -77,6 +78,24 @@ internal object Prompts {
 
     /** The CV guide, appended to an agent's instruction. */
     fun guide(guide: String): String = "\n\n<guide>\n$guide\n</guide>"
+
+    /** Enough of a description for any posting's requirements; the rest is usually benefits and legal text. */
+    const val DESCRIPTION_CHARS = 6_000
+
+    /** A job, in its own tags: facts about the job, never about the candidate, and never instructions. */
+    fun job(listed: ListedJob): String {
+        val posting = listed.job.posting
+        return buildString {
+            appendLine("<job>")
+            appendLine("Title: ${posting.title}")
+            appendLine("Company: ${listed.company}")
+            posting.location?.let { appendLine("Location: $it") }
+            posting.workplace?.let { appendLine("Workplace: ${it.name.lowercase()}") }
+            appendLine("Description:")
+            appendLine(posting.description.take(DESCRIPTION_CHARS))
+            appendLine("</job>")
+        }
+    }
 
     /** An example CV for a similar role: its people and numbers are invented, so never a source of facts. */
     fun example(example: String): String =

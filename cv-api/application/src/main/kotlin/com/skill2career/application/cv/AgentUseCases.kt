@@ -1,5 +1,6 @@
 package com.skill2career.application.cv
 
+import com.skill2career.application.job.ListedJobs
 import com.skill2career.application.profile.ProfileStore
 import com.skill2career.domain.cv.CvRequest
 import com.skill2career.domain.cv.CvStatus
@@ -27,21 +28,26 @@ class InterviewCandidate(
     }
 }
 
-/** The writer and critic, in turn, until a draft is approved or the rounds run out. */
+/**
+ * The writer and critic, in turn, until a draft is approved or the rounds run out. A CV for a job is
+ * aimed at it even if the job stopped being listed meanwhile: the candidate asked for it.
+ */
 class WriteCv(
     private val requests: CvRequestStore,
     private val profiles: ProfileStore,
     private val writer: Writer,
     private val critic: Critic,
+    private val jobs: ListedJobs,
 ) {
     fun write(id: Long): CvRequest {
         var request = requests.find(id) ?: throw CvRequestNotFound(id)
         if (request.status != CvStatus.WRITING) return request
 
         val profile = profiles.findByOwner(request.ownerId) ?: return requests.save(request.failed(PROFILE_GONE))
+        val job = request.jobId?.let(jobs::find)
         try {
             while (request.needsAnotherRound) {
-                val brief = Brief(profile, request.rounds.lastOrNull())
+                val brief = Brief(profile, request.rounds.lastOrNull(), job)
                 val draft = writer.write(brief)
                 val review = critic.review(brief, draft)
                 // Saved each round, so the candidate sees progress, and a restart carries on from here.

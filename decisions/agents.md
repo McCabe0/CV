@@ -60,6 +60,19 @@ against wiremock playing that provider's api, so changing provider is a tested c
 The interviewer, writer and critic can each use a different provider or model
 (`llm.writer.provider`, ...), so a cheaper model can critique a stronger one's work, if wanted.
 
+## decision: a CV for one job (slice 5)
+A CV request can name a listed job (`jobId`); without one it is a general CV, aimed at the profile's
+target role. The same loop writes both. For a job, the `Brief` carries it, and:
+- the writer is told to aim at it: the summary written for it, the skills and bullets it asks for put
+  first, and its keywords used where the facts support them.
+- the critic checks its keywords too (MISSING_KEYWORD), and a summary not written for it
+  (GENERIC_SUMMARY).
+- the job is shown in its own `<job>` tags, as the fit summary shows it, and both are told it is never a
+  source of facts about the candidate: a claim found only in the job is an INVENTED_FACT.
+- the interviewer is not shown the job: its questions fill gaps in the profile, which every CV reuses.
+- a job that stops being listed while its CV is written is still aimed at: the candidate asked for it.
+  Starting a CV for a job no longer listed is refused.
+
 ## costs
 - up to 7 LLM calls per CV (1 interviewer, 3 writer, 3 critic), against 1 before. Mitigated by the
   round limit, and by the critic usually approving by round 2.

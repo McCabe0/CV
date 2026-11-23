@@ -1,5 +1,8 @@
 package com.skill2career.application.cv
 
+import com.skill2career.application.job.InMemoryJobStore
+import com.skill2career.application.job.InMemoryTrackedCompanyStore
+import com.skill2career.application.job.ListedJobs
 import com.skill2career.application.profile.InMemoryProfileStore
 import com.skill2career.domain.cv.CvFixtures.awaitingAnswers
 import com.skill2career.domain.cv.CvFixtures.cv
@@ -31,6 +34,7 @@ class AdvanceCvRequestTest {
                 cv()
             },
             { _, _ -> review() },
+            ListedJobs(InMemoryJobStore(), InMemoryTrackedCompanyStore()),
         ),
     ).advance(id)
 

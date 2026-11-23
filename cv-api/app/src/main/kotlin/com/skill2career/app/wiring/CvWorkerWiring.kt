@@ -25,6 +25,7 @@ import com.skill2career.application.job.FitExplainer
 import com.skill2career.application.job.FitSummaryStore
 import com.skill2career.application.job.GiveUpOnFitSummary
 import com.skill2career.application.job.JobStore
+import com.skill2career.application.job.ListedJobs
 import com.skill2career.application.job.TrackedCompanyStore
 import com.skill2career.application.job.WriteFitSummary
 import com.skill2career.application.profile.ProfileStore
@@ -77,7 +78,8 @@ class CvWorkerWiring {
         profiles: ProfileStore,
         writer: Writer,
         critic: Critic,
-    ): WriteCv = WriteCv(requests, profiles, writer, critic)
+        jobs: ListedJobs,
+    ): WriteCv = WriteCv(requests, profiles, writer, critic, jobs)
 
     @Bean
     fun advanceCvRequest(
@@ -87,6 +89,13 @@ class CvWorkerWiring {
 
     @Bean
     fun giveUpOnCvRequest(requests: CvRequestStore): GiveUpOnCvRequest = GiveUpOnCvRequest(requests)
+
+    /** The job a CV is aimed at, with its company, as the writer and critic are shown it. */
+    @Bean
+    fun listedJobs(
+        jobs: JobStore,
+        companies: TrackedCompanyStore,
+    ): ListedJobs = ListedJobs(jobs, companies)
 
     @Bean
     fun fitExplainer(llm: LlmClient): FitExplainer = LlmFitExplainer(llm)

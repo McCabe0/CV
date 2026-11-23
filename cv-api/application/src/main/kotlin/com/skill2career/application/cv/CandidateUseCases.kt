@@ -1,21 +1,32 @@
 package com.skill2career.application.cv
 
+import com.skill2career.application.job.JobNotFound
+import com.skill2career.application.job.JobStore
 import com.skill2career.application.profile.ProfileNotFound
 import com.skill2career.application.profile.ProfileStore
 import com.skill2career.domain.cv.Answer
 import com.skill2career.domain.cv.CvRequest
+import com.skill2career.domain.job.Job
 import com.skill2career.domain.profile.OwnerId
 
 // What the candidate does, through the api.
 
-/** Starts a CV. The candidate needs a profile first, as the CV is written only from it. */
+/**
+ * Starts a CV: a general one, aimed at the profile's target role, or one aimed at a listed job. The
+ * candidate needs a profile first, as the CV is written only from it.
+ */
 class RequestCv(
     private val profiles: ProfileStore,
     private val requests: CvRequestStore,
+    private val jobs: JobStore,
 ) {
-    fun request(ownerId: OwnerId): CvRequest {
+    fun request(
+        ownerId: OwnerId,
+        jobId: Long? = null,
+    ): CvRequest {
         profiles.findByOwner(ownerId) ?: throw ProfileNotFound(ownerId)
-        return requests.save(CvRequest.requested(ownerId), queueWork = true)
+        if (jobId != null) jobs.find(jobId)?.takeIf(Job::active) ?: throw JobNotFound(jobId)
+        return requests.save(CvRequest.requested(ownerId, jobId), queueWork = true)
     }
 }
 

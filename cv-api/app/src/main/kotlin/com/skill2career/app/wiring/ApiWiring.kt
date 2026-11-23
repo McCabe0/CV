@@ -54,7 +54,8 @@ class ApiWiring {
     fun requestCv(
         profiles: ProfileStore,
         requests: CvRequestStore,
-    ): RequestCv = RequestCv(profiles, requests)
+        jobs: JobStore,
+    ): RequestCv = RequestCv(profiles, requests, jobs)
 
     @Bean
     fun findCvRequest(requests: CvRequestStore): FindCvRequest = FindCvRequest(requests)

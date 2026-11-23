@@ -26,7 +26,7 @@ class LlmFitExplainer(
     ): String =
         call.ask(
             "The fit summary",
-            LlmRequest(SYSTEM, Prompts.profile(profile) + job(job), SCHEMA),
+            LlmRequest(SYSTEM, Prompts.profile(profile) + Prompts.job(job), SCHEMA),
             Answer::class.java,
         ) { answer ->
             val summary = answer.summary.trim()
@@ -35,24 +35,8 @@ class LlmFitExplainer(
             summary
         }
 
-    private fun job(listed: ListedJob): String {
-        val posting = listed.job.posting
-        return buildString {
-            appendLine()
-            appendLine("<job>")
-            appendLine("Title: ${posting.title}")
-            appendLine("Company: ${listed.company}")
-            posting.location?.let { appendLine("Location: $it") }
-            posting.workplace?.let { appendLine("Workplace: ${it.name.lowercase()}") }
-            appendLine("Description:")
-            appendLine(posting.description.take(DESCRIPTION_CHARS))
-            append("</job>")
-        }
-    }
-
     companion object {
-        /** Enough for any posting's requirements; the rest is usually benefits and legal text. */
-        const val DESCRIPTION_CHARS = 6_000
+        const val DESCRIPTION_CHARS = Prompts.DESCRIPTION_CHARS
 
         const val MAX_CHARS = 800
 

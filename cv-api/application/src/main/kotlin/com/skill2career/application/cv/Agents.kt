@@ -4,6 +4,7 @@ import com.skill2career.domain.cv.Cv
 import com.skill2career.domain.cv.Question
 import com.skill2career.domain.cv.Review
 import com.skill2career.domain.cv.Round
+import com.skill2career.domain.job.ListedJob
 import com.skill2career.domain.profile.Profile
 
 // The agents, as driven ports. The adapters implement them with an LLM. See decisions/agents.md.
@@ -26,10 +27,14 @@ fun interface Critic {
     ): Review
 }
 
-/** Everything the writer and critic may use: the profile, with its facts. Nothing else may appear on the CV. */
+/**
+ * Everything the writer and critic may use: the profile, with its facts. Nothing else may appear on the
+ * CV. A CV for one [job] is aimed at it, but the job is never a source of facts about the candidate.
+ */
 data class Brief(
     val profile: Profile,
     val lastRound: Round? = null,
+    val job: ListedJob? = null,
 )
 
 /**

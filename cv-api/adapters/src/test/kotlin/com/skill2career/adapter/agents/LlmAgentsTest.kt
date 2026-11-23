@@ -9,6 +9,9 @@ import com.skill2career.domain.cv.IssueKind
 import com.skill2career.domain.cv.Question
 import com.skill2career.domain.cv.Review
 import com.skill2career.domain.cv.Round
+import com.skill2career.domain.job.JobFixtures.job
+import com.skill2career.domain.job.JobFixtures.posting
+import com.skill2career.domain.job.ListedJob
 import com.skill2career.domain.profile.Fact
 import com.skill2career.domain.profile.ProfileFixtures.profile
 import org.assertj.core.api.Assertions.assertThat
@@ -193,5 +196,50 @@ class LlmAgentsTest {
         val request = llm.requests.single()
         assertThat(request.system).contains("<guide>\nTHE GUIDE: bullets show results.\n</guide>")
         assertThat(request.prompt).doesNotContain("An example CV.")
+    }
+
+    private val forJob =
+        brief.copy(
+            job =
+                ListedJob(
+                    job(id = 42, posting = posting(title = "Payments Platform Engineer", description = "We need Kafka and Terraform.")),
+                    "Monzo",
+                ),
+        )
+
+    @Test
+    fun `the writer of a CV for one job is shown the job, and told to aim at it without taking facts from it`() {
+        val llm = ScriptedLlm(cvJson)
+
+        LlmWriter(llm, guide).write(forJob)
+
+        val request = llm.requests.single()
+        assertThat(request.prompt).contains("<job>", "Payments Platform Engineer", "Monzo", "We need Kafka and Terraform.", "</job>")
+        assertThat(request.system).contains("aim this CV at the job", "never a source of facts")
+    }
+
+    @Test
+    fun `the critic of a CV for one job checks it against the job's keywords, and never takes facts from it`() {
+        val llm = ScriptedLlm("""{"score": 90, "approved": true, "issues": []}""")
+
+        LlmCritic(llm, guide).review(forJob, cv())
+
+        val request = llm.requests.single()
+        assertThat(request.prompt).contains("<job>", "We need Kafka and Terraform.")
+        assertThat(request.system).contains("the job's keywords", "never a source of facts")
+    }
+
+    @Test
+    fun `a general CV shows neither the writer nor the critic a job`() {
+        val writerLlm = ScriptedLlm(cvJson)
+        val criticLlm = ScriptedLlm("""{"score": 90, "approved": true, "issues": []}""")
+
+        LlmWriter(writerLlm, guide).write(brief)
+        LlmCritic(criticLlm, guide).review(brief, cv())
+
+        listOf(writerLlm, criticLlm).forEach { llm ->
+            assertThat(llm.requests.single().prompt).doesNotContain("<job>")
+            assertThat(llm.requests.single().system).doesNotContain("aim this CV at the job", "the job's keywords")
+        }
     }
 }
