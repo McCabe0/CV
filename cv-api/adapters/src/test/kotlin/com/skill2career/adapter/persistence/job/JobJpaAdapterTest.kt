@@ -95,4 +95,13 @@ class JobJpaAdapterTest : PostgresTest() {
                 .posting.description,
         ).hasSize(60_000)
     }
+
+    @Test
+    fun `finds a job by its id, and nothing for an id it never had`() {
+        adapter.saveAll(listOf(job(company = monzo, posting = posting("1", title = "Staff Engineer"))))
+        val saved = adapter.forCompany(monzo.id!!).single()
+
+        assertThat(adapter.find(saved.id!!)).isEqualTo(saved)
+        assertThat(adapter.find(-1)).isNull()
+    }
 }

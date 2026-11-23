@@ -41,6 +41,9 @@ interface TrackedCompanyStore {
 interface JobStore {
     fun forCompany(companyId: Long): List<Job>
 
+    /** The job, active or not; null when we never had it. */
+    fun find(id: Long): Job?
+
     /** Saves new and changed jobs together: all of them, or none. */
     fun saveAll(jobs: List<Job>)
 }

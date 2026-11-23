@@ -66,6 +66,8 @@ class InMemoryJobStore : JobStore {
 
     override fun forCompany(companyId: Long): List<Job> = jobs.values.filter { it.companyId == companyId }.sortedBy { it.id }
 
+    override fun find(id: Long): Job? = jobs[id]
+
     override fun saveAll(jobs: List<Job>) {
         lastSaved = jobs
         jobs.forEach { job ->

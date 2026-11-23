@@ -116,6 +116,9 @@ class JobJpaAdapter(
     @Transactional(readOnly = true)
     override fun forCompany(companyId: Long): List<Job> = repo.findByCompanyId(companyId).map { it.toDomain() }
 
+    @Transactional(readOnly = true)
+    override fun find(id: Long): Job? = repo.findById(id).map { it.toDomain() }.orElse(null)
+
     override fun saveAll(jobs: List<Job>) {
         repo.saveAll(jobs.map(JobEntity::of))
     }
