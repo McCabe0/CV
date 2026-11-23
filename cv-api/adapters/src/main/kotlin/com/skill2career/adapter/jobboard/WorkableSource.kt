@@ -4,6 +4,7 @@ import com.skill2career.application.job.JobSource
 import com.skill2career.domain.job.JobPosting
 import com.skill2career.domain.job.SourceType
 import com.skill2career.domain.job.TrackedCompany
+import com.skill2career.domain.job.Workplace
 import tools.jackson.databind.JsonNode
 
 /** Workable's public widget. Its descriptions are html, only sent when asked for. */
@@ -22,6 +23,8 @@ class WorkableSource(
                 location = location(it),
                 description = PlainText.of(it.text("description").orEmpty()),
                 applyUrl = it.text("url"),
+                // Workable only says when a job is remote; otherwise it could be hybrid or on site.
+                workplace = if (it.path("telecommuting").asBoolean(false)) Workplace.REMOTE else null,
             )
         }
 

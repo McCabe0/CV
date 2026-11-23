@@ -10,6 +10,7 @@ import com.skill2career.application.job.JobSource
 import com.skill2career.domain.job.JobFixtures.COMPANY
 import com.skill2career.domain.job.JobPosting
 import com.skill2career.domain.job.SourceType
+import com.skill2career.domain.job.Workplace
 import org.assertj.core.api.Assertions.assertThat
 import kotlin.test.Test
 
@@ -19,7 +20,27 @@ class GreenhouseSourceTest : JobSourceContract() {
 
     override fun source(baseUrl: String): JobSource = GreenhouseSource(JobBoardSettings(baseUrl))
 
+    /** Greenhouse has no field for it, so only a location naming remote work says anything. */
+    override val workplacesSaid = listOf(Workplace.REMOTE)
+
     private fun path(token: String) = "/v1/boards/$token/jobs"
+
+    @Test
+    fun `a location offering remote work, or distributed, is remote, and any other says nothing`() {
+        val locations = listOf("Cardiff, London or Remote (UK)", "Remote, Poland", "Distributed", "Hybrid", "London")
+        board.serves(
+            path(COMPANY.boardToken),
+            mapOf(
+                "jobs" to
+                    locations.mapIndexed { i, name ->
+                        mapOf("id" to i, "title" to "Engineer", "location" to mapOf("name" to name), "absolute_url" to "https://x/$i")
+                    },
+            ),
+        )
+
+        assertThat(source(board.baseUrl()).fetch(COMPANY).map { it.workplace })
+            .containsExactly(Workplace.REMOTE, Workplace.REMOTE, Workplace.REMOTE, null, null)
+    }
 
     override fun lists(
         token: String,
@@ -32,7 +53,7 @@ class GreenhouseSourceTest : JobSourceContract() {
                     mapOf(
                         "id" to it.externalId.toLong(),
                         "title" to it.title,
-                        "location" to mapOf("name" to it.location),
+                        "location" to mapOf("name" to if (it.workplace == Workplace.REMOTE) "Remote" else it.location),
                         "content" to escaped("<p>${it.description}</p>"),
                         "absolute_url" to it.applyUrl,
                         "departments" to listOf(mapOf("name" to "Engineering")),

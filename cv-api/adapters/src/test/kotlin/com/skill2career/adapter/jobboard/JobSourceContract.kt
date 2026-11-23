@@ -11,6 +11,7 @@ import com.skill2career.domain.job.JobFixtures.COMPANY
 import com.skill2career.domain.job.JobPosting
 import com.skill2career.domain.job.SourceType
 import com.skill2career.domain.job.TrackedCompany
+import com.skill2career.domain.job.Workplace
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.AfterEach
@@ -35,6 +36,12 @@ abstract class JobSourceContract {
         token: String,
         postings: List<JobPosting>,
     )
+
+    /**
+     * Where a job can be done, in the words this board has for it. [lists] writes a posting's workplace in
+     * the board's own way; one with none, the way the board says nothing.
+     */
+    abstract val workplacesSaid: List<Workplace>
 
     /** The board for [token] lists one posting this reader cannot use: with no title. */
     abstract fun listsUntitled(token: String)
@@ -75,6 +82,14 @@ abstract class JobSourceContract {
         lists("acme", listOf(posting, second))
 
         assertThat(fetch()).containsExactly(posting, second)
+    }
+
+    @Test
+    fun `says where each job is done when its board does, and nothing when it does not`() {
+        val said = workplacesSaid.mapIndexed { i, workplace -> posting.copy(externalId = "${5000 + i}", workplace = workplace) }
+        lists("acme", said + posting.copy(workplace = null))
+
+        assertThat(fetch().map { it.workplace }).containsExactly(*(workplacesSaid + null).toTypedArray())
     }
 
     @Test

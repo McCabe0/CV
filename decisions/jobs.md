@@ -53,6 +53,11 @@ In two steps (`MatchJobs`):
    candidate's skills asked for, then most named in the title, then newest. The best 50 are shown, each
    with the skills it asks for.
 
+The index (`PostgresJobIndex`, `V7__job_search.sql`) is a generated `tsvector` column, title weighted over
+description, with a GIN index on active jobs. It uses postgres's `simple` configuration, so words are kept
+as written rather than stemmed as english: skills are names. Each skill is searched as a phrase, any of
+them matching, through `websearch_to_tsquery`, so a skill is only ever a bound value, never syntax.
+
 A skill is mentioned whatever its case, as a whole word, so Java is not found in JavaScript, while C#,
 C++ and .NET are. Short skills that are also words, like Go, can match by accident; good enough to start.
 

@@ -1,6 +1,7 @@
 package com.skill2career.adapter.jobboard
 
 import com.skill2career.domain.job.JobPosting
+import com.skill2career.domain.job.Workplace
 import org.springframework.http.client.JdkClientHttpRequestFactory
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestClient
@@ -89,7 +90,20 @@ internal fun postingOrNull(
     location: String?,
     description: String,
     applyUrl: String?,
+    workplace: Workplace? = null,
 ): JobPosting? {
     if (externalId == null || title == null || applyUrl == null) return null
-    return JobPosting(externalId, title.trim(), location?.trim(), description, applyUrl)
+    return JobPosting(externalId, title.trim(), location?.trim(), description, applyUrl, workplace)
 }
+
+/**
+ * A board's own word for where a job is done, as Lever and Ashby send it, whatever its case: remote,
+ * hybrid, or on site, written onsite or OnSite. Any other word, like unspecified, says nothing.
+ */
+internal fun workplaceOf(word: String?): Workplace? =
+    when (word?.lowercase()?.replace("-", "")) {
+        "remote" -> Workplace.REMOTE
+        "hybrid" -> Workplace.HYBRID
+        "onsite" -> Workplace.ONSITE
+        else -> null
+    }

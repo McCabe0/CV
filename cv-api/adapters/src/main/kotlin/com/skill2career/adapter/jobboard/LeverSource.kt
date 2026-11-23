@@ -25,6 +25,7 @@ class LeverSource(
                 location = it.path("categories").text("location"),
                 description = description(it),
                 applyUrl = it.text("hostedUrl"),
+                workplace = workplaceOf(it.text("workplaceType")),
             )
         }
 

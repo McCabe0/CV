@@ -4,6 +4,7 @@ import com.skill2career.adapter.persistence.PostgresTest
 import com.skill2career.domain.job.JobFixtures.job
 import com.skill2career.domain.job.JobFixtures.posting
 import com.skill2career.domain.job.TrackedCompany
+import com.skill2career.domain.job.Workplace
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.springframework.beans.factory.annotation.Autowired
@@ -37,7 +38,14 @@ class JobJpaAdapterTest : PostgresTest() {
         val inactive =
             job(
                 company = monzo,
-                posting = posting("1", title = "Staff Engineer", location = null, description = "Line one.\nLine two."),
+                posting =
+                    posting(
+                        "1",
+                        title = "Staff Engineer",
+                        location = null,
+                        description = "Line one.\nLine two.",
+                        workplace = Workplace.HYBRID,
+                    ),
                 firstSeenAt = Instant.parse("2026-11-20T06:00:00Z"),
                 inactiveSince = Instant.parse("2026-11-23T06:00:00Z"),
             )

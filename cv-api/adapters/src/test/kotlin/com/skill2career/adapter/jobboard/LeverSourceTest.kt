@@ -9,6 +9,7 @@ import com.skill2career.application.job.JobSource
 import com.skill2career.domain.job.JobFixtures.COMPANY
 import com.skill2career.domain.job.JobPosting
 import com.skill2career.domain.job.SourceType
+import com.skill2career.domain.job.Workplace
 import org.assertj.core.api.Assertions.assertThat
 import kotlin.test.Test
 
@@ -28,9 +29,11 @@ class LeverSourceTest : JobSourceContract() {
         hostedUrl: String,
         lists: List<Map<String, String>> = emptyList(),
         additionalPlain: String = "",
+        workplaceType: String = "unspecified",
     ) = mapOf(
         "id" to id,
         "text" to text,
+        "workplaceType" to workplaceType,
         "categories" to mapOf("location" to location, "team" to "Platform"),
         "descriptionPlain" to descriptionPlain,
         "lists" to lists,
@@ -44,8 +47,13 @@ class LeverSourceTest : JobSourceContract() {
         postings: List<JobPosting>,
     ) = board.serves(
         path(token),
-        postings.map { lever(it.externalId, it.title, it.location, it.description, it.applyUrl) },
+        postings.map {
+            val workplaceType = it.workplace?.name?.lowercase() ?: "unspecified"
+            lever(it.externalId, it.title, it.location, it.description, it.applyUrl, workplaceType = workplaceType)
+        },
     )
+
+    override val workplacesSaid = listOf(Workplace.REMOTE, Workplace.HYBRID, Workplace.ONSITE)
 
     override fun listsUntitled(token: String) =
         board.serves(path(token), listOf(lever("1", null, null, "", "https://jobs.lever.co/acme/1")))

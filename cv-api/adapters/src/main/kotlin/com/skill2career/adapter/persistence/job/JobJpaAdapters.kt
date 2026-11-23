@@ -6,6 +6,7 @@ import com.skill2career.domain.job.Job
 import com.skill2career.domain.job.JobPosting
 import com.skill2career.domain.job.SourceType
 import com.skill2career.domain.job.TrackedCompany
+import com.skill2career.domain.job.Workplace
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
@@ -62,6 +63,8 @@ class JobEntity(
     var location: String?,
     var description: String,
     var applyUrl: String,
+    @Enumerated(EnumType.STRING)
+    var workplace: Workplace?,
     var firstSeenAt: Instant,
     var inactiveSince: Instant?,
     var updatedAt: Instant = Instant.now(),
@@ -77,7 +80,7 @@ class JobEntity(
             id = id,
             companyId = companyId,
             source = source,
-            posting = JobPosting(externalId, title, location, description, applyUrl),
+            posting = JobPosting(externalId, title, location, description, applyUrl, workplace),
             firstSeenAt = firstSeenAt,
             inactiveSince = inactiveSince,
         )
@@ -93,6 +96,7 @@ class JobEntity(
                 location = job.posting.location,
                 description = job.posting.description,
                 applyUrl = job.posting.applyUrl,
+                workplace = job.posting.workplace,
                 firstSeenAt = job.firstSeenAt,
                 inactiveSince = job.inactiveSince,
             )

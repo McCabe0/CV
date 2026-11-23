@@ -6,6 +6,7 @@ import com.skill2career.application.job.JobSource
 import com.skill2career.domain.job.JobFixtures.COMPANY
 import com.skill2career.domain.job.JobPosting
 import com.skill2career.domain.job.SourceType
+import com.skill2career.domain.job.Workplace
 import org.assertj.core.api.Assertions.assertThat
 import kotlin.test.Test
 
@@ -24,11 +25,15 @@ class AshbySourceTest : JobSourceContract() {
         descriptionPlain: String,
         jobUrl: String,
         isListed: Boolean = true,
+        workplaceType: String? = null,
     ) = mapOf(
         "id" to id,
         "title" to title,
         "location" to location,
         "isListed" to isListed,
+        "workplaceType" to workplaceType,
+        // As ashby sends it: true for hybrid jobs too.
+        "isRemote" to (workplaceType == "Remote" || workplaceType == "Hybrid"),
         "descriptionPlain" to descriptionPlain,
         "descriptionHtml" to "<p>$descriptionPlain</p>",
         "jobUrl" to jobUrl,
@@ -42,9 +47,25 @@ class AshbySourceTest : JobSourceContract() {
         path(token),
         mapOf(
             "apiVersion" to "1",
-            "jobs" to postings.map { ashby(it.externalId, it.title, it.location, it.description, it.applyUrl) },
+            "jobs" to
+                postings.map {
+                    ashby(
+                        it.externalId,
+                        it.title,
+                        it.location,
+                        it.description,
+                        it.applyUrl,
+                        workplaceType = it.workplace?.let(WORDS::getValue),
+                    )
+                },
         ),
     )
+
+    override val workplacesSaid = listOf(Workplace.REMOTE, Workplace.HYBRID, Workplace.ONSITE)
+
+    private companion object {
+        val WORDS = mapOf(Workplace.REMOTE to "Remote", Workplace.HYBRID to "Hybrid", Workplace.ONSITE to "OnSite")
+    }
 
     override fun listsUntitled(token: String) =
         board.serves(path(token), mapOf("jobs" to listOf(ashby("1", null, null, "", "https://jobs.ashbyhq.com/acme/1"))))

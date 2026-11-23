@@ -9,6 +9,7 @@ import com.skill2career.application.job.JobSource
 import com.skill2career.domain.job.JobFixtures.COMPANY
 import com.skill2career.domain.job.JobPosting
 import com.skill2career.domain.job.SourceType
+import com.skill2career.domain.job.Workplace
 import org.assertj.core.api.Assertions.assertThat
 import kotlin.test.Test
 
@@ -46,9 +47,16 @@ class WorkableSourceTest : JobSourceContract() {
         path(token),
         mapOf(
             "name" to "Acme",
-            "jobs" to postings.map { workable(it.externalId, it.title, it.location, null, it.description, it.applyUrl) },
+            "jobs" to
+                postings.map {
+                    val remote = it.workplace == Workplace.REMOTE
+                    workable(it.externalId, it.title, it.location, null, it.description, it.applyUrl, telecommuting = remote)
+                },
         ),
     )
+
+    /** Workable only says when a job is remote: not remote could be hybrid or on site. */
+    override val workplacesSaid = listOf(Workplace.REMOTE)
 
     override fun listsUntitled(token: String) =
         board.serves(path(token), mapOf("jobs" to listOf(workable("1", null, null, null, "", "https://apply.workable.com/j/1"))))

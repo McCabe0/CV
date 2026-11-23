@@ -26,6 +26,8 @@ class AshbySource(
                     location = it.text("location"),
                     description = PlainText.tidy(it.text("descriptionPlain").orEmpty()),
                     applyUrl = it.text("jobUrl"),
+                    // Not isRemote, which ashby also sets for hybrid jobs.
+                    workplace = workplaceOf(it.text("workplaceType")),
                 )
             }
 
