@@ -5,17 +5,28 @@ import java.time.Instant
 /** The applicant tracking systems whose public job boards we read. */
 enum class SourceType { GREENHOUSE, LEVER, ASHBY, WORKABLE }
 
-/** A company whose job board is crawled: which system it uses, and its name on that system. */
+/**
+ * A company whose job board is crawled: which system it uses, and its name on that system. An admin can
+ * stop tracking it: it is kept, so the CVs and summaries for its jobs keep them, but no longer crawled.
+ */
 data class TrackedCompany(
     val id: Long? = null,
     val name: String,
     val source: SourceType,
     val boardToken: String,
+    val untrackedAt: Instant? = null,
 ) {
     init {
         require(name.isNotBlank()) { "a company needs a name" }
         require(boardToken.isNotBlank()) { "a company needs its board token" }
     }
+
+    val tracked: Boolean get() = untrackedAt == null
+
+    fun untracked(at: Instant): TrackedCompany = copy(untrackedAt = at)
+
+    /** Tracked again, under the [name] the admin gives it now. */
+    fun trackedAgain(name: String): TrackedCompany = copy(name = name, untrackedAt = null)
 }
 
 /** Where a job is done, as its board says. */
@@ -82,4 +93,10 @@ object Jobs {
         val unchanged = stored.toSet()
         return (current + gone).filter { it !in unchanged }
     }
+
+    /** The live jobs among [stored], closed [at] that moment: what to save when a company is untracked. */
+    fun close(
+        stored: List<Job>,
+        at: Instant,
+    ): List<Job> = stored.filter { it.active }.map { it.copy(inactiveSince = at) }
 }

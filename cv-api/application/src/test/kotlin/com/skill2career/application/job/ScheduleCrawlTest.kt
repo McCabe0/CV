@@ -3,6 +3,7 @@ package com.skill2career.application.job
 import com.skill2career.domain.job.JobFixtures.COMPANY
 import com.skill2career.domain.job.SourceType
 import org.assertj.core.api.Assertions.assertThat
+import java.time.Instant
 import java.time.LocalDate
 import kotlin.test.Test
 
@@ -20,6 +21,15 @@ class ScheduleCrawlTest {
         assertThat(schedule.schedule(today)).isTrue()
 
         assertThat(queue.queued).containsExactly(COMPANY.id, lever.id)
+    }
+
+    @Test
+    fun `skips a company an admin no longer tracks`() {
+        companies.save(COMPANY.untracked(Instant.parse("2026-11-22T12:00:00Z")))
+
+        schedule.schedule(today)
+
+        assertThat(queue.queued).isEmpty()
     }
 
     @Test
