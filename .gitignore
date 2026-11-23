@@ -6,7 +6,7 @@
 secrets.properties
 !secrets.properties.example
 
-# ---------- Java / Gradle (backend) ----------
+# ---------- Java / Gradle (cv-api) ----------
 .gradle/
 **/build/
 !gradle/wrapper/gradle-wrapper.jar
@@ -15,7 +15,7 @@ secrets.properties
 *.log
 hs_err_pid*
 
-# ---------- Node / Vite (frontend) ----------
+# ---------- Node (cv-ui) ----------
 node_modules/
 dist/
 dist-ssr/

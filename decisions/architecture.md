@@ -1,9 +1,9 @@
 ## context
 Skill2Career takes a user's details, writes them a professional CV, and finds live jobs, on the
 company's own website, that match their skills. The first version was a flat controller, service and
-entity app, with the jobs made up by an LLM. It is rebuilt here, alongside it, in `cv-api` and `cv-ui`,
-following the digital-resolutions-poc for its production tooling and test style. The old `backend` and
-`frontend` are deleted once the rebuild replaces them.
+entity app, with the jobs made up by an LLM. It was rebuilt in `cv-api` and `cv-ui`, following the
+digital-resolutions-poc for its production tooling and test style. The old `backend` and `frontend` were
+deleted once the rebuild replaced them, after slice 5.
 
 ## key rules
 - TDD, always. The failing test is written first, for an endpoint its resource test first, then the

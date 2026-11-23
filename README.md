@@ -1,83 +1,65 @@
 # Skill2Career
 
-AI-powered app to:
-- collect a user's skills and experience
-- generate a CV
-- search for relevant jobs
-- match jobs against the user's skills
+Takes a candidate's skills and experience, writes them a CV, and finds live jobs on companies' own job
+boards that ask for their skills.
+
+- **Profile:** the candidate's skills, experience, education and work history.
+- **CV:** an interviewer asks about gaps in the profile, then a writer and a critic go round by round
+  until the CV is good enough. A CV can be general, or aimed at one listed job.
+- **Jobs:** the companies' own Greenhouse, Lever, Ashby and Workable boards are crawled daily. A
+  candidate sees the jobs that ask for their skills, best first, filtered by remote only and location,
+  and can ask why one fits them.
 
 ## Structure
 
 ```text
-frontend/   React + TypeScript + Vite
-backend/    Kotlin + Spring Boot
+cv-api/      Kotlin + Spring Boot, hexagonal: domain, application, adapters, app
+             one image, run as the api, the cv-worker or the job-worker
+cv-ui/       Next.js micro-frontends in a pnpm workspace: the shell and the profile, cv and jobs zones
+decisions/   why it is built the way it is: architecture, agents, jobs, messaging, ui, observability
+local/       scripts for the local stack
 ```
 
-## Configuration
+Postgres, Kafka (with an outbox) and Keycloak sit underneath. See `decisions/architecture.md`.
 
-The backend calls the Gemini API and reads the key from the `GEMINI_API_KEY`
-environment variable (`backend/src/main/resources/application.properties` maps
-`gemini.api.key=${GEMINI_API_KEY:}`). **Never commit a real key** — set it in
-your environment instead.
+## Run it
+
+Everything runs in Docker Compose. Copy `.env.example` to `.env` and add a Gemini key: it is free from
+[Google AI Studio](https://aistudio.google.com/app/apikey). Never commit a real key. The cv-worker does
+not start without one.
 
 ```bash
-# macOS / Linux
-export GEMINI_API_KEY="your-key"
+docker compose up -d --build --wait
+bash local/seed-profiles.sh   # a profile for each test user
+bash local/crawl-now.sh       # crawl the job boards now, rather than wait for the daily crawl
 ```
 
-```powershell
-# Windows PowerShell — current session
-$env:GEMINI_API_KEY = "your-key"
+Then open http://localhost:3000 and sign in as `candidate`, `candidate-other` or `admin`, each with
+the password `test`.
 
-# Windows — persist for future shells
-setx GEMINI_API_KEY "your-key"
-```
+| what                         | where                                     |
+|------------------------------|-------------------------------------------|
+| the app                      | http://localhost:3000                     |
+| api, swagger                 | http://localhost:8080/api/swagger-ui.html |
+| keycloak admin               | http://localhost:8180 (admin / admin)     |
+| kafka ui: topics, lag, dlq   | http://localhost:8090                     |
+| grafana: metrics, logs       | http://localhost:3300                     |
+| jaeger: traces               | http://localhost:16686                    |
 
-If the variable is unset the backend still starts, but Gemini calls fail and
-fall back to degraded responses. Get a key from
-[Google AI Studio](https://aistudio.google.com/app/apikey).
+The database keeps its data in the `pgdata` volume across `docker compose down`. To start it empty,
+use `docker compose down --volumes`.
 
-## Frontend
+## Test it
 
 ```bash
-cd frontend
-npm install
-npm run dev
+cd cv-api && ./gradlew check   # ktlint, unit and testcontainers tests, 90% coverage
+cd cv-ui && pnpm check         # prettier, eslint, typecheck, jest
 ```
 
-## Backend
+The Playwright journeys run against the whole stack, with WireMock standing in for Gemini and the job
+boards. Run them on their own compose project, so they don't touch the dev stack's data:
 
 ```bash
-cd backend
-gradle bootRun
+docker compose -p cv-e2e -f docker-compose.yml -f docker-compose.e2e.yml up -d --build --wait shell cv-worker job-worker
+cd cv-ui && pnpm e2e
 ```
-
-
-## Run both services
-
-You can run backend + frontend together from the repo root:
-
-```bash
-# macOS / Linux / Git Bash / WSL
-./run.sh
-```
-
-```powershell
-# Windows PowerShell
-.\run.ps1
-```
-
-Both scripts start:
-- backend with `gradle bootRun`
-- frontend with `npm run dev`
-
-and shut the backend down again when you stop them.
-
-Make sure `GEMINI_API_KEY` is set in your shell first (see
-[Configuration](#configuration)).
-
-Press `Ctrl+C` to stop both processes.
-
-## Test URLs
-
-- `http://localhost:8080/health`
