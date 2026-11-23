@@ -14,7 +14,8 @@ object JobFixtures {
         location: String? = "London",
         description: String = "Build payment APIs in Kotlin.",
         applyUrl: String = "https://monzo.com/careers/4001",
-    ): JobPosting = JobPosting(externalId, title, location, description, applyUrl)
+        workplace: Workplace? = null,
+    ): JobPosting = JobPosting(externalId, title, location, description, applyUrl, workplace)
 
     fun job(
         id: Long? = null,

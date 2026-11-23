@@ -1,12 +1,27 @@
 package com.skill2career.application.job
 
 import com.skill2career.domain.job.Job
+import com.skill2career.domain.job.JobFilter
 import com.skill2career.domain.job.JobPosting
+import com.skill2career.domain.job.ListedJob
 import com.skill2career.domain.job.SourceType
 import com.skill2career.domain.job.TrackedCompany
 import java.time.LocalDate
 
-// The driven ports the crawl needs. Adapters implement them.
+// The driven ports the crawl and matching need. Adapters implement them.
+
+/** Searches our copy of the jobs, never the boards. */
+interface JobIndex {
+    /**
+     * Up to [limit] active jobs that [filter] accepts and that mention any of the [terms], best text
+     * match first.
+     */
+    fun search(
+        terms: List<String>,
+        filter: JobFilter,
+        limit: Int,
+    ): List<ListedJob>
+}
 
 /** One applicant tracking system's public job board. Throws when the board cannot be read. */
 interface JobSource {

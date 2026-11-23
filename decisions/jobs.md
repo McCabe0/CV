@@ -46,6 +46,33 @@ title and description. It is fast and does not touch the boards, so the boards' 
 ever hit by the crawl, never by users. An optional LLM explanation of the top matches goes through
 kafka, as the CV does.
 
+In two steps (`MatchJobs`):
+1. the `JobIndex` port finds up to 200 active jobs that the filter accepts and that mention any of the
+   candidate's skills, best postgres text match first.
+2. the domain's `Matching.rank` keeps those asking for at least one skill and orders them: most of the
+   candidate's skills asked for, then most named in the title, then newest. The best 50 are shown, each
+   with the skills it asks for.
+
+A skill is mentioned whatever its case, as a whole word, so Java is not found in JavaScript, while C#,
+C++ and .NET are. Short skills that are also words, like Go, can match by accident; good enough to start.
+
+## decision: remote only, and location (2026-11-23)
+A candidate can ask for remote jobs only, and for a place, eg "London" or "UK", which keeps jobs whose
+location names it. Both together keep remote jobs in that place. Remote only trusts the board: a job
+whose board does not say where it is done is left out, never guessed.
+
+| source | where it is done |
+|---|---|
+| Lever | `workplaceType`: remote, hybrid, onsite |
+| Ashby | `workplaceType`: Remote, Hybrid, OnSite. Not `isRemote`, which is also true for hybrid jobs |
+| Workable | `telecommuting`: true is remote, otherwise not said |
+| Greenhouse | location text only: "Remote" or "Distributed" (Cloudflare's word) is remote, otherwise not said |
+
+## decision: why a job fits, on asking (2026-11-23)
+A match has a "why it fits" button. The first ask queues an LLM summary through kafka and the answer is
+saved, so each candidate's summary for a job is written once. Not written for every match up front, as
+each costs a request from the LLM's free daily quota.
+
 ## decision: once a day, one crawl at a time
 - the crawl runs once a day. Job posts rarely change faster, and it keeps us polite to the boards.
 - only one job-worker queues the day's crawl, however many run, using postgres alone: a `crawl_runs` row

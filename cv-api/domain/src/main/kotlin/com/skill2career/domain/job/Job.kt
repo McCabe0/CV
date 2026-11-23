@@ -18,13 +18,20 @@ data class TrackedCompany(
     }
 }
 
-/** A job as its board lists it. The apply link is the company's own page. */
+/** Where a job is done, as its board says. */
+enum class Workplace { REMOTE, HYBRID, ONSITE }
+
+/**
+ * A job as its board lists it. The apply link is the company's own page. [workplace] is null when
+ * the board does not say.
+ */
 data class JobPosting(
     val externalId: String,
     val title: String,
     val location: String?,
     val description: String,
     val applyUrl: String,
+    val workplace: Workplace? = null,
 ) {
     init {
         require(externalId.isNotBlank()) { "a posting needs the board's id" }

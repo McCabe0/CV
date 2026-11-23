@@ -1,12 +1,43 @@
 package com.skill2career.application.job
 
 import com.skill2career.domain.job.Job
+import com.skill2career.domain.job.JobFilter
 import com.skill2career.domain.job.JobPosting
+import com.skill2career.domain.job.ListedJob
+import com.skill2career.domain.job.Matching
 import com.skill2career.domain.job.SourceType
 import com.skill2career.domain.job.TrackedCompany
 import java.time.LocalDate
 
 // Hand written fakes of the job ports, for any module's tests.
+
+/** Finds what the real index would, in the order held: active, accepted, mentioning a term. */
+class InMemoryJobIndex : JobIndex {
+    private val held = mutableListOf<ListedJob>()
+
+    class Search(
+        val terms: List<String>,
+        val filter: JobFilter,
+    )
+
+    val searches = mutableListOf<Search>()
+
+    fun holds(vararg jobs: ListedJob) {
+        held += jobs
+    }
+
+    override fun search(
+        terms: List<String>,
+        filter: JobFilter,
+        limit: Int,
+    ): List<ListedJob> {
+        searches += Search(terms.toList(), filter)
+        return held
+            .filter { (job) -> job.active && filter.accepts(job.posting) }
+            .filter { (job) -> terms.any { Matching.mentions(job.posting.title + "\n" + job.posting.description, it) } }
+            .take(limit)
+    }
+}
 
 class InMemoryTrackedCompanyStore(
     vararg companies: TrackedCompany,
