@@ -62,3 +62,8 @@ kafka, as the CV does.
 ## starting companies
 Checked live on 2026-11-22: Monzo, GitLab and Cloudflare (Greenhouse), Palantir and Spotify (Lever),
 Ramp and Linear (Ashby), Blueground (Workable). The admin zone takes over the list in slice 6.
+
+## running it locally
+`local/crawl-now.sh` crawls every board now on the compose stack: it clears today's `crawl_runs` row and
+recreates the job-worker, which asks for the crawl a minute after it starts, then counts each company's
+jobs as they arrive. First run, 2026-11-22: 1,431 jobs from the eight boards in under a minute.
