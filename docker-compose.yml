@@ -44,6 +44,10 @@ services:
       POSTGRES_DB: skill2career
       POSTGRES_USER: skill2career
       POSTGRES_PASSWORD: skill2career
+    # A named volume, so profiles, CVs and crawled jobs outlive `docker compose down`. Only
+    # `docker compose down --volumes` starts the database empty.
+    volumes:
+      - pgdata:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
@@ -293,3 +297,6 @@ services:
         condition: service_healthy
     environment:
       <<: *ui-environment
+
+volumes:
+  pgdata:
