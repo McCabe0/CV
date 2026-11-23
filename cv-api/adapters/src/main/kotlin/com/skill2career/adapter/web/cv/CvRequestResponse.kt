@@ -41,10 +41,13 @@ data class CvRequestResponse(
     val cv: Cv?,
     @field:Schema(description = "Only once failed: why.")
     val failure: String?,
+    @field:Schema(description = "The job this CV is aimed at; none for a general CV.")
+    val jobId: Long? = null,
 ) {
     companion object {
         fun of(request: CvRequest) =
             CvRequestResponse(
+                jobId = request.jobId,
                 id = request.id!!,
                 status = request.status,
                 questions = request.questions.map { QuestionResponse(it.id, it.text) },
@@ -58,6 +61,12 @@ data class CvRequestResponse(
             )
     }
 }
+
+@Schema(description = "What to aim the CV at. No body, or no jobId, for a general CV.")
+data class CvRequestBody(
+    @field:Schema(description = "A listed job, from your matches.")
+    val jobId: Long? = null,
+)
 
 data class AnswerRequest(
     @field:Min(1)

@@ -7,6 +7,7 @@ import com.skill2career.application.cv.CvRequestNotFound
 import com.skill2career.application.cv.CvRequestStore
 import com.skill2career.application.cv.FindCvRequest
 import com.skill2career.application.cv.RequestCv
+import com.skill2career.application.job.JobNotFound
 import com.skill2career.application.profile.ProfileNotFound
 import com.skill2career.domain.cv.Answer
 import com.skill2career.domain.cv.CvFixtures.awaitingAnswers
@@ -85,6 +86,38 @@ class CvRequestResourceTest {
             .andExpect(header().string("Location", org.hamcrest.Matchers.endsWith("/cv-requests/7")))
             .andExpect(jsonPath("$.id").value(7))
             .andExpect(jsonPath("$.status").value("REQUESTED"))
+    }
+
+    @Test
+    fun `a general CV is one for no job`() {
+        whenever(requestCv.request(OWNER, null)) doReturn CvRequest.requested(OWNER).copy(id = 7)
+
+        mockMvc
+            .perform(post("/cv-requests").with(candidate()).contentType(MediaType.APPLICATION_JSON).content("{}"))
+            .andExpect(status().isAccepted)
+            .andExpect(jsonPath("$.jobId").doesNotExist())
+    }
+
+    @Test
+    fun `starts a CV for one listed job, saying which`() {
+        whenever(requestCv.request(OWNER, 42)) doReturn CvRequest.requested(OWNER, jobId = 42).copy(id = 7)
+
+        mockMvc
+            .perform(post("/cv-requests").with(candidate()).contentType(MediaType.APPLICATION_JSON).content("""{"jobId": 42}"""))
+            .andExpect(status().isAccepted)
+            .andExpect(jsonPath("$.jobId").value(42))
+
+        verify(requestCv).request(OWNER, 42)
+    }
+
+    @Test
+    fun `a CV for a job we do not have, or no longer listed, is not found`() {
+        whenever(requestCv.request(OWNER, 42)) doThrow JobNotFound(42)
+
+        mockMvc
+            .perform(post("/cv-requests").with(candidate()).contentType(MediaType.APPLICATION_JSON).content("""{"jobId": 42}"""))
+            .andExpect(status().isNotFound)
+            .andExpect(jsonPath("$.detail").value("No such job, or it is no longer listed."))
     }
 
     @Test
