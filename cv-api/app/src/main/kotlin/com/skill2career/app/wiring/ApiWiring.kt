@@ -3,6 +3,7 @@ package com.skill2career.app.wiring
 import com.skill2career.adapter.messaging.CvProgressListener
 import com.skill2career.adapter.persistence.job.PostgresJobIndex
 import com.skill2career.adapter.web.ApiExceptionHandler
+import com.skill2career.adapter.web.admin.CompanyAdminResource
 import com.skill2career.adapter.web.cv.CvRequestResource
 import com.skill2career.adapter.web.cv.ProgressStreams
 import com.skill2career.adapter.web.job.JobFitResource
@@ -14,18 +15,27 @@ import com.skill2career.application.cv.AnswerQuestions
 import com.skill2career.application.cv.CvRequestStore
 import com.skill2career.application.cv.FindCvRequest
 import com.skill2career.application.cv.RequestCv
+import com.skill2career.application.job.CrawlNow
+import com.skill2career.application.job.CrawlQueue
+import com.skill2career.application.job.CrawlResults
 import com.skill2career.application.job.FindFitSummary
 import com.skill2career.application.job.FitSummaryStore
 import com.skill2career.application.job.JobIndex
+import com.skill2career.application.job.JobSource
 import com.skill2career.application.job.JobStore
+import com.skill2career.application.job.ListCompanies
 import com.skill2career.application.job.MatchJobs
 import com.skill2career.application.job.RequestFitSummary
+import com.skill2career.application.job.StopTracking
+import com.skill2career.application.job.TrackCompany
+import com.skill2career.application.job.TrackedCompanyStore
 import com.skill2career.application.profile.FindProfile
 import com.skill2career.application.profile.ProfileStore
 import com.skill2career.application.profile.SaveProfile
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
+import java.time.Clock
 
 /**
  * The http api. Only the `api` role serves it. The use cases are plain kotlin, made beans here. Each
@@ -41,9 +51,38 @@ import org.springframework.context.annotation.Import
     JobMatchResource::class,
     JobFitResource::class,
     PostgresJobIndex::class,
+    CompanyAdminResource::class,
+    JobBoardWiring::class,
     ApiExceptionHandler::class,
 )
 class ApiWiring {
+    @Bean
+    fun listCompanies(
+        companies: TrackedCompanyStore,
+        jobs: JobStore,
+        results: CrawlResults,
+    ): ListCompanies = ListCompanies(companies, jobs, results)
+
+    @Bean
+    fun trackCompany(
+        companies: TrackedCompanyStore,
+        sources: List<JobSource>,
+        queue: CrawlQueue,
+    ): TrackCompany = TrackCompany(companies, sources, queue)
+
+    @Bean
+    fun stopTracking(
+        companies: TrackedCompanyStore,
+        jobs: JobStore,
+        clock: Clock,
+    ): StopTracking = StopTracking(companies, jobs, clock)
+
+    @Bean
+    fun crawlNow(
+        companies: TrackedCompanyStore,
+        queue: CrawlQueue,
+    ): CrawlNow = CrawlNow(companies, queue)
+
     @Bean
     fun saveProfile(store: ProfileStore): SaveProfile = SaveProfile(store)
 

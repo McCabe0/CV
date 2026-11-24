@@ -104,6 +104,11 @@ each costs a request from the LLM's free daily quota.
   board listed, added and closed, and why it failed. A failure is recorded on its own, as the crawl's
   own work rolls back. With each company's live jobs, it is what the admin zone shows, and an admin can
   crawl one company now rather than wait for the next day.
+- the api, for the ADMIN role only: `GET /admin/companies`; `POST /admin/companies` (201; 422 when the
+  board does not exist, 502 when it could not be read just now, 409 when already tracked);
+  `DELETE /admin/companies/{id}` stops tracking it; `POST /admin/companies/{id}/crawl` (202; 409 when no
+  longer tracked). The api reads a new company's board itself, so it has the board readers as the
+  job-worker does (`JobBoardWiring`). Adding and stopping each run in one transaction, on the resource.
 
 ## starting companies
 Checked live on 2026-11-22: Monzo, GitLab and Cloudflare (Greenhouse), Palantir and Spotify (Lever),

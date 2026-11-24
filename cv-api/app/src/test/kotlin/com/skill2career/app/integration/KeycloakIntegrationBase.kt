@@ -87,6 +87,29 @@ abstract class KeycloakIntegrationBase {
             .headers { it.setBearerAuth(tokenFor(username)) }
             .exchange()
 
+    protected fun postJson(
+        url: String,
+        body: Any,
+        username: String,
+    ): ResponseSpec =
+        webTestClient
+            .post()
+            .uri(url)
+            .headers { it.setBearerAuth(tokenFor(username)) }
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(body)
+            .exchange()
+
+    protected fun delete(
+        url: String,
+        username: String,
+    ): ResponseSpec =
+        webTestClient
+            .delete()
+            .uri(url)
+            .headers { it.setBearerAuth(tokenFor(username)) }
+            .exchange()
+
     /** A server sent event stream, each event's data as text, until the server ends it. */
     protected fun events(
         url: String,
