@@ -11,6 +11,16 @@ describe('areasFor', () => {
     ])
   })
 
+  it('gives an admin the companies, and only an admin', () => {
+    expect(areasFor(user('ADMIN'))).toEqual([{ name: 'Admin', href: '/admin' }])
+    expect(areasFor(user('CANDIDATE', 'ADMIN')).map(({ href }) => href)).toEqual([
+      '/profile',
+      '/cv',
+      '/jobs',
+      '/admin',
+    ])
+  })
+
   it('gives an account without a known role nothing', () => {
     expect(areasFor(user('SOMETHING_ELSE'))).toEqual([])
   })

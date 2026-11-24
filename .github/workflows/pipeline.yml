@@ -40,6 +40,9 @@ jobs:
           - image: cv-jobs
             context: cv-ui
             app: jobs
+          - image: cv-admin
+            context: cv-ui
+            app: admin
     permissions:
       contents: read
       packages: write

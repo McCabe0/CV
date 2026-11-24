@@ -19,6 +19,7 @@ describe('shell proxy', () => {
       PROFILE_URL: 'http://profile:3001',
       CV_URL: 'http://cv:3002',
       JOBS_URL: 'http://jobs:3003',
+      ADMIN_URL: 'http://admin:3004',
     }
   })
 
@@ -46,6 +47,19 @@ describe('shell proxy', () => {
     ['/jobs?remoteOnly=on&location=UK', 'http://jobs:3003/jobs?remoteOnly=on&location=UK'],
   ])('routes %s to the jobs zone', async (path, expected) => {
     expect(await rewrittenTo(proxy(request(path)))).toBe(expected)
+  })
+
+  it.each([
+    ['/admin', 'http://admin:3004/admin'],
+    ['/admin/_next/static/app.js', 'http://admin:3004/admin/_next/static/app.js'],
+  ])('routes %s to the admin zone', async (path, expected) => {
+    expect(await rewrittenTo(proxy(request(path)))).toBe(expected)
+  })
+
+  it('defaults the admin zone to its local dev port', async () => {
+    delete process.env.ADMIN_URL
+
+    expect(await rewrittenTo(proxy(request('/admin')))).toBe('http://localhost:3004/admin')
   })
 
   it('defaults the jobs zone to its local dev port', async () => {
@@ -76,6 +90,7 @@ describe('shell proxy', () => {
     expect(await rewrittenTo(proxy(request('/profiles')))).toBeNull()
     expect(await rewrittenTo(proxy(request('/cvs')))).toBeNull()
     expect(await rewrittenTo(proxy(request('/jobsearch')))).toBeNull()
+    expect(await rewrittenTo(proxy(request('/administrator')))).toBeNull()
   })
 
   it('leaves zone sessions to the zone, which refreshes them itself', async () => {

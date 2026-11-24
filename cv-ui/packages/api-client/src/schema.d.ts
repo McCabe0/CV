@@ -92,6 +92,50 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/admin/companies': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Every company, with its live jobs and last crawl
+     * @description Tracked companies first.
+     */
+    get: operations['list']
+    put?: never
+    /**
+     * Track a company's job board
+     * @description The board is read once first: 422 when it does not exist, 502 when it could not be read just now. Its first crawl is queued at once. A board tracked before is tracked again.
+     */
+    post: operations['track']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/admin/companies/{id}/crawl': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Crawl a company now
+     * @description 409 when it is no longer tracked.
+     */
+    post: operations['crawl']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/jobs/matches': {
     parameters: {
       query?: never
@@ -147,6 +191,26 @@ export interface paths {
     put?: never
     post?: never
     delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/admin/companies/{id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post?: never
+    /**
+     * Stop tracking a company
+     * @description It is kept, but no longer crawled, and its live jobs close.
+     */
+    delete: operations['stop']
     options?: never
     head?: never
     patch?: never
@@ -305,6 +369,44 @@ export interface components {
        * @description A listed job, from your matches.
        */
       jobId?: number | null
+    }
+    /** @description A company's job board to track. */
+    TrackCompanyRequest: {
+      /** @example Stripe */
+      name: string
+      /** @enum {string} */
+      source: 'GREENHOUSE' | 'LEVER' | 'ASHBY' | 'WORKABLE'
+      /**
+       * @description The company's name on its board, as in its board's url.
+       * @example stripe
+       */
+      boardToken: string
+    }
+    CompanyResponse: {
+      /** Format: int64 */
+      id: number
+      name: string
+      /** @enum {string} */
+      source: 'GREENHOUSE' | 'LEVER' | 'ASHBY' | 'WORKABLE'
+      boardToken: string
+      tracked: boolean
+      /** Format: date-time */
+      untrackedAt?: string | null
+      /** Format: int32 */
+      liveJobs: number
+      lastCrawl?: components['schemas']['CrawlResponse'] | null
+    }
+    CrawlResponse: {
+      /** Format: date-time */
+      at: string
+      outcome: string
+      /** Format: int32 */
+      found: number
+      /** Format: int32 */
+      added: number
+      /** Format: int32 */
+      closed: number
+      error?: string | null
     }
     JobMatchResponse: {
       /** Format: int64 */
@@ -469,6 +571,70 @@ export interface operations {
       }
     }
   }
+  list: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CompanyResponse'][]
+        }
+      }
+    }
+  }
+  track: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['TrackCompanyRequest']
+      }
+    }
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CompanyResponse']
+        }
+      }
+    }
+  }
+  crawl: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: number
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Accepted */
+      202: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+    }
+  }
   matches: {
     parameters: {
       query?: {
@@ -534,6 +700,28 @@ export interface operations {
         }
         content: {
           'text/event-stream': components['schemas']['SseEmitter']
+        }
+      }
+    }
+  }
+  stop: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: number
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CompanyResponse']
         }
       }
     }

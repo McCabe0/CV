@@ -183,6 +183,81 @@
         }
       }
     },
+    "/admin/companies": {
+      "get": {
+        "tags": ["admin"],
+        "summary": "Every company, with its live jobs and last crawl",
+        "description": "Tracked companies first.",
+        "operationId": "list",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CompanyResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["admin"],
+        "summary": "Track a company's job board",
+        "description": "The board is read once first: 422 when it does not exist, 502 when it could not be read just now. Its first crawl is queued at once. A board tracked before is tracked again.",
+        "operationId": "track",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrackCompanyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/companies/{id}/crawl": {
+      "post": {
+        "tags": ["admin"],
+        "summary": "Crawl a company now",
+        "description": "409 when it is no longer tracked.",
+        "operationId": "crawl",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          }
+        }
+      }
+    },
     "/jobs/matches": {
       "get": {
         "tags": ["jobs"],
@@ -284,6 +359,37 @@
               "text/event-stream": {
                 "schema": {
                   "$ref": "#/components/schemas/SseEmitter"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/companies/{id}": {
+      "delete": {
+        "tags": ["admin"],
+        "summary": "Stop tracking a company",
+        "description": "It is kept, but no longer crawled, and its live jobs close.",
+        "operationId": "stop",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyResponse"
                 }
               }
             }
@@ -820,6 +926,100 @@
             "description": "A listed job, from your matches."
           }
         }
+      },
+      "TrackCompanyRequest": {
+        "type": "object",
+        "description": "A company's job board to track.",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Stripe",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "source": {
+            "type": "string",
+            "enum": ["GREENHOUSE", "LEVER", "ASHBY", "WORKABLE"]
+          },
+          "boardToken": {
+            "type": "string",
+            "description": "The company's name on its board, as in its board's url.",
+            "example": "stripe",
+            "maxLength": 100,
+            "minLength": 0,
+            "pattern": "^\\s*[A-Za-z0-9][A-Za-z0-9._-]*\\s*$"
+          }
+        },
+        "required": ["boardToken", "name", "source"]
+      },
+      "CompanyResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string",
+            "enum": ["GREENHOUSE", "LEVER", "ASHBY", "WORKABLE"]
+          },
+          "boardToken": {
+            "type": "string"
+          },
+          "tracked": {
+            "type": "boolean"
+          },
+          "untrackedAt": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "liveJobs": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lastCrawl": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/CrawlResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": ["boardToken", "id", "liveJobs", "name", "source", "tracked"]
+      },
+      "CrawlResponse": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "outcome": {
+            "type": "string"
+          },
+          "found": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "added": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "closed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "error": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["added", "at", "closed", "found", "outcome"]
       },
       "JobMatchResponse": {
         "type": "object",
