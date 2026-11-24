@@ -41,6 +41,22 @@ describe('AddCompanyForm', () => {
       'Added Stripe. Its jobs will show within a minute.',
     )
     expect(screen.getByRole('textbox', { name: 'Company name' })).toHaveValue('')
+    expect(screen.getByRole('combobox', { name: 'Job board' })).toHaveValue('')
+  })
+
+  it('keeps every answer, the job board too, when the api refuses the company', async () => {
+    const values = { name: 'Acme', source: 'LEVER', boardToken: 'acme' }
+    render(<AddCompanyForm action={answering({ values, formError: 'There is no LEVER board.' })} />)
+
+    await userEvent.type(screen.getByRole('textbox', { name: 'Company name' }), 'Acme')
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Job board' }), 'LEVER')
+    await userEvent.type(screen.getByRole('textbox', { name: 'Board token' }), 'acme')
+    await userEvent.click(screen.getByRole('button', { name: 'Add company' }))
+
+    expect(await screen.findByText('There is no LEVER board.')).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Company name' })).toHaveValue('Acme')
+    expect(screen.getByRole('combobox', { name: 'Job board' })).toHaveValue('LEVER')
+    expect(screen.getByRole('textbox', { name: 'Board token' })).toHaveValue('acme')
   })
 
   it('shows what is wrong with each field, keeping what was entered', async () => {

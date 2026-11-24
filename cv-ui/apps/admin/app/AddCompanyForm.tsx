@@ -31,7 +31,11 @@ export function AddCompanyForm({ action, initialState = {} }: Props) {
     <section aria-labelledby="add-heading" className={styles.add}>
       <h2 id="add-heading">Add a company</h2>
       {state.added && <p role="status">Added {state.added}. Its jobs will show within a minute.</p>}
-      <form action={formAction} noValidate>
+      {/*
+        React resets a form once its action is done, and a select goes back to the default it was
+        mounted with. So the form is mounted afresh for each answer's values, keeping the board chosen.
+      */}
+      <form key={JSON.stringify(state.values ?? null)} action={formAction} noValidate>
         <ErrorSummary errors={errors} />
         <TextField
           name="name"

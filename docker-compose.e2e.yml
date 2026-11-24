@@ -25,13 +25,21 @@ services:
       GEMINI_API_KEY: e2e-not-a-real-key
       LLM_GEMINI_BASEURL: http://gemini:8080/v1beta
 
+  # The api reads a board when an admin adds its company, so it plays the same boards as the job-worker.
+  api:
+    depends_on:
+      boards:
+        condition: service_started
+    environment: &played-boards
+      JOBS_GREENHOUSE_URL: http://boards:8080
+      JOBS_LEVER_URL: http://boards:8080
+      JOBS_ASHBY_URL: http://boards:8080
+      JOBS_WORKABLE_URL: http://boards:8080
+
   job-worker:
     depends_on:
       boards:
         condition: service_started
     environment:
+      <<: *played-boards
       JOBS_CRAWL_FIRST_CHECK_MS: 5000
-      JOBS_GREENHOUSE_URL: http://boards:8080
-      JOBS_LEVER_URL: http://boards:8080
-      JOBS_ASHBY_URL: http://boards:8080
-      JOBS_WORKABLE_URL: http://boards:8080
