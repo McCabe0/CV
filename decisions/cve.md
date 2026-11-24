@@ -22,8 +22,9 @@ every push to main, once they are built.
   Only for ones with no fix, or a fix that does not apply.
 - `_cve.yml` is a job of its own, not part of `_image.yml`, so a failed build cannot show as a failed
   scan. It pulls the pushed images by commit.
-- `cve-daily.yml` scans the newest full set of images each morning, as new vulnerabilities appear with
-  no push. It keeps one issue open while it fails, and closes it when it passes.
+- `nightly.yml` scans the newest full set of images each morning, as new vulnerabilities appear with
+  no push, beside the other nightly checks. It keeps one issue open while any fails, and closes it when
+  all pass.
 - dependabot raises the fixes, weekly and grouped, with security fixes as they appear: the base images
   of both `cv-api` and `cv-ui`, and the ui's npm packages beside the api's gradle ones. It never moves a
   runtime's major version: java's is the api's gradle toolchain and node's the ui's `.nvmrc`, changed by

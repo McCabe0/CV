@@ -52,8 +52,13 @@ jobs:
       context: ${{ matrix.context }}
       build-args: APP=${{ matrix.app }}
 
+  # On the images just pushed, not built again: playwright, then ZAP's passive scans of the ui. ZAP's
+  # attacks on the api run nightly (nightly.yml).
   smoke:
-    needs: [validate-api, validate-ui]
+    needs: [validate-api, validate-ui, images]
+    permissions:
+      contents: read
+      packages: read
     uses: ./.github/workflows/_smoke.yml
 
   # The images that were pushed, as shipped: os packages, jars and node modules in one scan.

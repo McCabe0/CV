@@ -1,0 +1,38 @@
+name: Start the stack
+description: >
+  The e2e stack (docker-compose.yml, docker-compose.e2e.yml) from a commit's pushed images, through
+  docker-compose.ci.yml, not built again. Sets COMPOSE_FILE, so later steps' docker compose commands, such
+  as showing the logs, reach the same stack. The job needs packages read. See decisions/workflow.md.
+
+inputs:
+  tag:
+    description: The images' tag, a commit hash.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
+    # Image names are lowercase, and the owner (McCabe0) is not.
+    - name: Pull the images
+      shell: bash
+      env:
+        OWNER: ${{ github.repository_owner }}
+        TAG: ${{ inputs.tag }}
+      run: |
+        registry="ghcr.io/${OWNER,,}"
+        {
+          echo "IMAGE_REGISTRY=$registry"
+          echo "IMAGE_TAG=$TAG"
+          echo "COMPOSE_FILE=docker-compose.yml:docker-compose.e2e.yml:docker-compose.ci.yml"
+        } >> "$GITHUB_ENV"
+        for service in api shell profile cv jobs admin; do
+          docker pull --quiet "$registry/cv-$service:$TAG"
+        done
+    - name: Start the stack
+      shell: bash
+      run: docker compose up --detach --no-build --wait --wait-timeout 600 shell cv-worker job-worker

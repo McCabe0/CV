@@ -1,7 +1,9 @@
 name: Pull request
 
 # The checks a pull request needs. The images are built, not pushed, so a broken Dockerfile fails here.
-# See decisions/workflow.md.
+# Only what the change touches: a change to cv-ui alone skips the api's checks, and the reverse. A change
+# to what both share (the workflows, compose, ci) runs everything. Branch protection requires the one
+# `checks` job, as skipped jobs leave required checks waiting. See decisions/workflow.md.
 on:
   pull_request:
     branches:
@@ -11,44 +13,86 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.diff.outputs.api }}
+      ui: ${{ steps.diff.outputs.ui }}
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 2
+      # The checkout is the pull request merged into main, so its first parent is main.
+      - name: Find what changed
+        id: diff
+        run: |
+          changed=$(git diff --name-only HEAD^1 HEAD)
+          printf '%s\n' "$changed"
+          shared='^(\.github/|ci/|docker-compose)'
+          touches() { grep -qE "$1|$shared" <<< "$changed" && echo true || echo false; }
+          echo "api=$(touches '^cv-api/')" >> "$GITHUB_OUTPUT"
+          echo "ui=$(touches '^cv-ui/')" >> "$GITHUB_OUTPUT"
+
   validate-api:
+    needs: changes
+    if: ${{ needs.changes.outputs.api == 'true' }}
     uses: ./.github/workflows/_validate-api.yml
 
   validate-ui:
+    needs: changes
+    if: ${{ needs.changes.outputs.ui == 'true' }}
     uses: ./.github/workflows/_validate-ui.yml
 
-  images:
-    name: image ${{ matrix.image }}
+  image-api:
+    name: image cv-api
+    needs: changes
+    if: ${{ needs.changes.outputs.api == 'true' }}
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - image: cv-api
-            context: cv-api
-          - image: cv-shell
-            context: cv-ui
-            app: shell
-          - image: cv-profile
-            context: cv-ui
-            app: profile
-          - image: cv-cv
-            context: cv-ui
-            app: cv
-          - image: cv-jobs
-            context: cv-ui
-            app: jobs
-          - image: cv-admin
-            context: cv-ui
-            app: admin
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - name: Build image
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
-          context: ${{ matrix.context }}
+          context: cv-api
+          build-args: GIT_SHA=${{ github.sha }}
+          push: false
+          cache-from: type=gha,scope=cv-api
+
+  images-ui:
+    name: image cv-${{ matrix.app }}
+    needs: changes
+    if: ${{ needs.changes.outputs.ui == 'true' }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [shell, profile, cv, jobs, admin]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: cv-ui
           build-args: |
             GIT_SHA=${{ github.sha }}
             APP=${{ matrix.app }}
           push: false
-          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-from: type=gha,scope=cv-${{ matrix.app }}
+
+  # The one check branch protection requires: passes when every job that ran passed, skipped ones
+  # included.
+  checks:
+    needs: [changes, validate-api, validate-ui, image-api, images-ui]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every check that ran passed
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "$RESULTS"
+          for result in $RESULTS; do
+            [[ $result == success || $result == skipped ]] || exit 1
+          done

@@ -1,7 +1,9 @@
-name: Daily CVE scan
+name: Nightly
 
-# New vulnerabilities appear with no push. Scans the newest full set of images each morning, and keeps one
-# issue open while it fails, closing it when it passes. See decisions/cve.md.
+# The slow checks that rarely fail, kept off every push so the pipeline stays quick, on the newest full
+# set of images each morning, or by hand: the CVE scan, as new vulnerabilities appear with no push, and
+# ZAP's attack scan of the api. k6 joins them. Keeps one issue open while any fails, closing it when all
+# pass. See decisions/workflow.md, cve.md and zap.md.
 on:
   schedule:
     - cron: '0 6 * * *'
@@ -57,8 +59,17 @@ jobs:
     with:
       tag: ${{ needs.newest.outputs.tag }}
 
+  zap:
+    needs: newest
+    permissions:
+      contents: read
+      packages: read
+    uses: ./.github/workflows/_zap.yml
+    with:
+      tag: ${{ needs.newest.outputs.tag }}
+
   report:
-    needs: [newest, cve]
+    needs: [newest, cve, zap]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     permissions:
@@ -69,15 +80,18 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-          RESULT: ${{ needs.newest.result == 'success' && needs.cve.result || 'failure' }}
+          NEWEST: ${{ needs.newest.result }}
+          CVE: ${{ needs.cve.result }}
+          ZAP: ${{ needs.zap.result }}
           RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          title='Daily CVE scan failed'
+          title='Nightly checks failed'
+          results="finding the images: $NEWEST, cve: $CVE, zap: $ZAP"
           issue=$(gh issue list --state open --search "in:title \"$title\"" --json number --jq '.[0].number // empty')
-          if [[ $RESULT == success ]]; then
+          if [[ $NEWEST == success && $CVE == success && $ZAP == success ]]; then
             if [[ -n $issue ]]; then gh issue close "$issue" --comment "Passing again: $RUN"; fi
           elif [[ -n $issue ]]; then
-            gh issue comment "$issue" --body "Still failing: $RUN"
+            gh issue comment "$issue" --body "Still failing ($results): $RUN"
           else
-            gh issue create --title "$title" --body "See the reports: $RUN"
+            gh issue create --title "$title" --body "$results. See the reports: $RUN"
           fi

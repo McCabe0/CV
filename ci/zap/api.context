@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- What the api is not built on, so the api scan's attacks for those skip themselves. It is what we
+     do not have, rather than what we do, so that something new is attacked unless it is named here.
+     The api is Kotlin on Spring and Tomcat, on Linux, with PostgreSQL (cv-api), as the reference's is. The
+     names are ZAP's, and a family included takes in all of its members. It covers every url, as
+     zap.sh sets what is scanned. ZAP still lists the rules skipped as PASS in the scan's log. -->
+<configuration>
+    <context>
+        <name>api</name>
+        <inscope>true</inscope>
+        <incregexes>.*</incregexes>
+        <tech>
+            <include>Db</include>
+            <include>Framework</include>
+            <include>Language</include>
+            <include>OS</include>
+            <include>SCM</include>
+            <include>WS</include>
+            <exclude>Db.CouchDB</exclude>
+            <exclude>Db.Firebird</exclude>
+            <exclude>Db.HypersonicSQL</exclude>
+            <exclude>Db.IBM DB2</exclude>
+            <exclude>Db.MariaDB</exclude>
+            <exclude>Db.Microsoft Access</exclude>
+            <exclude>Db.Microsoft SQL Server</exclude>
+            <exclude>Db.MongoDB</exclude>
+            <exclude>Db.MySQL</exclude>
+            <exclude>Db.Oracle</exclude>
+            <exclude>Db.SAP MaxDB</exclude>
+            <exclude>Db.SQLite</exclude>
+            <exclude>Db.Sybase</exclude>
+            <exclude>Framework.Next.js</exclude>
+            <exclude>Framework.React</exclude>
+            <exclude>Language.ASP</exclude>
+            <exclude>Language.C</exclude>
+            <exclude>Language.PHP</exclude>
+            <exclude>Language.Python</exclude>
+            <exclude>Language.Ruby</exclude>
+            <exclude>OS.MacOS</exclude>
+            <exclude>OS.Windows</exclude>
+            <exclude>WS.Apache</exclude>
+            <exclude>WS.IIS</exclude>
+        </tech>
+    </context>
+</configuration>

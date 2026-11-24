@@ -1,0 +1,60 @@
+name: ZAP scan
+
+# OWASP ZAP, all three scans, nightly: the passive scans of the ui signed in as a candidate and as an
+# admin, and the attack scan of the api from its openapi docs. On a stack of its own, from a commit's
+# pushed images (.github/actions/stack), as its attacks change data. Any warning not accepted, with its
+# reason, in ci/zap fails it. The ui scans also run on every push, after the smoke tests. See
+# decisions/zap.md.
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: The images' tag, a commit hash.
+        required: true
+        type: string
+
+jobs:
+  zap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      packages: read
+    defaults:
+      run:
+        working-directory: cv-ui
+
+    steps:
+      # The commit the images were built from, so the scan's rules and sign in match them.
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+        with:
+          package_json_file: cv-ui/package.json
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: cv-ui/.nvmrc
+          cache: pnpm
+          cache-dependency-path: cv-ui/pnpm-lock.yaml
+      # Playwright signs in, for the session cookies the ui scans send.
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - uses: ./.github/actions/stack
+        with:
+          tag: ${{ inputs.tag }}
+      - name: Scan
+        working-directory: .
+        run: ./ci/zap.sh
+        timeout-minutes: 20
+      - name: Show the stack's logs
+        if: ${{ failure() }}
+        working-directory: .
+        run: docker compose logs --no-color
+      - name: Upload the reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: zap-report
+          path: ci/zap-report/
+          retention-days: 7

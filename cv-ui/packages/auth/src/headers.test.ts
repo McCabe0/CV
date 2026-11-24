@@ -41,6 +41,7 @@ describe('SECURITY_HEADERS', () => {
       'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
       'Cross-Origin-Resource-Policy': 'same-origin',
       'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Embedder-Policy': 'require-corp',
     })
   })
 })

@@ -1,0 +1,20 @@
+# CI only, over docker-compose.yml and docker-compose.e2e.yml: the stack from the images the pipeline's
+# images job pushed for a commit, so every check runs exactly what ships, and none builds them again.
+# IMAGE_REGISTRY and IMAGE_TAG are set by .github/actions/stack. See decisions/workflow.md.
+services:
+  api:
+    image: ${IMAGE_REGISTRY:?}/cv-api:${IMAGE_TAG:?}
+  cv-worker:
+    image: ${IMAGE_REGISTRY:?}/cv-api:${IMAGE_TAG:?}
+  job-worker:
+    image: ${IMAGE_REGISTRY:?}/cv-api:${IMAGE_TAG:?}
+  shell:
+    image: ${IMAGE_REGISTRY:?}/cv-shell:${IMAGE_TAG:?}
+  profile:
+    image: ${IMAGE_REGISTRY:?}/cv-profile:${IMAGE_TAG:?}
+  cv:
+    image: ${IMAGE_REGISTRY:?}/cv-cv:${IMAGE_TAG:?}
+  jobs:
+    image: ${IMAGE_REGISTRY:?}/cv-jobs:${IMAGE_TAG:?}
+  admin:
+    image: ${IMAGE_REGISTRY:?}/cv-admin:${IMAGE_TAG:?}
