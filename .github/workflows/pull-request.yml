@@ -1,7 +1,7 @@
 name: Pull request
 
 # The checks a pull request needs. The images are built, not pushed, so a broken Dockerfile fails here.
-See decisions/workflow.md.
+# See decisions/workflow.md.
 on:
   pull_request:
     branches:

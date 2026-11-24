@@ -1,0 +1,4 @@
+# Accepted vulnerabilities, each with its reason and the date to look again. Only for ones with no fix,
+# or a fix that does not apply: one with a fix is fixed. See decisions/cve.md.
+# - vulnerability: CVE-2026-0000  # why it does not apply, or why it can wait, and until when
+ignore: []

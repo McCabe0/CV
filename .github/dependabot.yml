@@ -8,17 +8,22 @@ updates:
     groups:
       actions:
         patterns: ['*']
+  # The base images, which the CVE scan most often finds fixes in. See decisions/cve.md.
   - package-ecosystem: docker
     directories:
       - /cv-api
+      - /cv-ui
     schedule:
       interval: weekly
     groups:
       base-images:
         patterns: ['*']
-    # A runtime's major version moves with the code's toolchain, by hand.
+    # A runtime's major version moves with the code's toolchain, by hand: java's with the gradle
+    # toolchain, node's with cv-ui/.nvmrc.
     ignore:
       - dependency-name: eclipse-temurin
+        update-types: ['version-update:semver-major']
+      - dependency-name: node
         update-types: ['version-update:semver-major']
   - package-ecosystem: docker-compose
     directory: /
@@ -33,5 +38,14 @@ updates:
       interval: weekly
     groups:
       gradle:
+        patterns: ['*']
+        update-types: [minor, patch]
+  # The ui's pnpm workspace: every app and package, from its one lockfile.
+  - package-ecosystem: npm
+    directory: /cv-ui
+    schedule:
+      interval: weekly
+    groups:
+      npm:
         patterns: ['*']
         update-types: [minor, patch]

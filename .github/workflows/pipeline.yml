@@ -1,6 +1,6 @@
 name: Pipeline
 
-# Every push to main. Cve, perf, observability and the deploy test join slice by slice.
+# Every push to main. Perf, observability and the deploy test join slice by slice.
 # See decisions/workflow.md.
 on:
   push:
@@ -55,3 +55,11 @@ jobs:
   smoke:
     needs: [validate-api, validate-ui]
     uses: ./.github/workflows/_smoke.yml
+
+  # The images that were pushed, as shipped: os packages, jars and node modules in one scan.
+  cve:
+    needs: images
+    permissions:
+      contents: read
+      packages: read
+    uses: ./.github/workflows/_cve.yml

@@ -9,12 +9,18 @@ GitHub Actions, as the digital-resolutions-poc. Built up a slice at a time.
 | `_validate-ui.yml` | called | prettier, eslint, typecheck, jest with 90% coverage |
 | `_image.yml` | called | builds an image, pushes it to ghcr tagged with the commit |
 | `_smoke.yml` | called | playwright against the compose stack, and OWASP ZAP |
-| `_cve.yml` | called, and daily | grype on every image |
+| `_cve.yml` | called | grype on every image: fails on high or critical with a fix (cve.md) |
+| `cve-daily.yml` | daily | `_cve.yml` on the newest images, keeping one issue open while it fails |
 | `_perf.yml` | called | k6, p99 targets per endpoint |
 | `_deploy-test.yml` | called | the helm charts installed on kind |
 | `mutation.yml` | weekly | pitest and stryker, report only |
 
 Dependabot keeps gradle, npm, docker and actions up to date.
+
+The workflows can only run on github, so `actionlint` checks them locally before they are pushed:
+`docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7`. It found, 2026-11-24, that
+`pull-request.yml` had not been valid yaml since slice 3, a comment line without its `#`, so no pull
+request had been checked since.
 
 ## delivery
 In vertical slices, each one test first, green, and reviewed before the next:

@@ -42,6 +42,16 @@ dependencies {
 
     // The outbox relay and the cv-worker's listener. See decisions/messaging.md.
     api("org.springframework.boot:spring-boot-starter-kafka")
+    // Kafka's client brings these older than their fixes. Each goes once kafka-clients brings it, or
+    // later. See decisions/cve.md.
+    constraints {
+        api("org.xerial.snappy:snappy-java:1.1.10.9") {
+            because("GHSA-q233-g92q-qxp6 and GHSA-gwq9-9ffj-mvrv, high, fixed in 1.1.10.9")
+        }
+        api("at.yawk.lz4:lz4-java:1.11.4") {
+            because("GHSA-mcr4-qmvw-px4g, high, fixed in 1.11.4")
+        }
+    }
 
     // The persistence adapter owns the schema, so its migrations live beside its entities.
     api("org.springframework.boot:spring-boot-starter-flyway")
