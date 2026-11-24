@@ -9,8 +9,10 @@ import com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration.options
 import com.skill2career.adapter.messaging.CrawlScheduler
 import com.skill2career.application.job.CrawlQueue
+import com.skill2career.application.job.CrawlResults
 import com.skill2career.application.job.JobStore
 import com.skill2career.application.job.TrackedCompanyStore
+import com.skill2career.domain.job.CrawlOutcome
 import com.skill2career.domain.job.TrackedCompany
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
@@ -61,6 +63,9 @@ class JobCrawlIntegrationTest : KeycloakIntegrationBase() {
 
     @Autowired
     lateinit var jobs: JobStore
+
+    @Autowired
+    lateinit var results: CrawlResults
 
     @Autowired
     lateinit var jdbc: JdbcTemplate
@@ -137,6 +142,9 @@ class JobCrawlIntegrationTest : KeycloakIntegrationBase() {
 
         await().atMost(Duration.ofSeconds(60)).until { activeTitles("Cloudflare") == listOf("Network Engineer") }
         assertThat(jobs.forCompany(company("Cloudflare").id!!).single { !it.active }.inactiveSince).isNotNull()
+        val lastCrawl = results.latest()[company("Cloudflare").id]!!
+        assertThat(lastCrawl.outcome).isEqualTo(CrawlOutcome.WORKED)
+        assertThat(listOf(lastCrawl.found, lastCrawl.added, lastCrawl.closed)).containsExactly(1, 0, 1)
     }
 
     @Test
@@ -149,8 +157,16 @@ class JobCrawlIntegrationTest : KeycloakIntegrationBase() {
 
         queue.queue(company("GitLab"))
 
-        await().atMost(Duration.ofSeconds(60)).until { requestsTo("/v1/boards/gitlab/jobs") == before + 2 }
-        await().during(Duration.ofSeconds(2)).atMost(Duration.ofSeconds(5)).until { requestsTo("/v1/boards/gitlab/jobs") == before + 2 }
+        // Parked once every try failed. Kafka delivers at least once, so a slow machine can see a try
+        // more than the two set, never fewer; what matters is that the tries stop.
+        await().atMost(Duration.ofSeconds(60)).untilAsserted {
+            val lastCrawl = results.latest()[company("GitLab").id]!!
+            assertThat(lastCrawl.outcome).isEqualTo(CrawlOutcome.PARKED)
+            assertThat(lastCrawl.error).contains("503")
+        }
+        val tries = requestsTo("/v1/boards/gitlab/jobs") - before
+        assertThat(tries).isGreaterThanOrEqualTo(2)
+        await().during(Duration.ofSeconds(3)).atMost(Duration.ofSeconds(6)).until { requestsTo("/v1/boards/gitlab/jobs") == before + tries }
         assertThat(activeTitles("GitLab")).containsExactly("Site Reliability Engineer")
     }
 
@@ -162,5 +178,6 @@ class JobCrawlIntegrationTest : KeycloakIntegrationBase() {
 
         await().atMost(Duration.ofSeconds(60)).until { requestsTo("/v0/postings/palantir") == 1 }
         await().during(Duration.ofSeconds(2)).atMost(Duration.ofSeconds(5)).until { requestsTo("/v0/postings/palantir") == 1 }
+        await().atMost(Duration.ofSeconds(30)).until { results.latest()[company("Palantir").id]?.outcome == CrawlOutcome.PARKED }
     }
 }

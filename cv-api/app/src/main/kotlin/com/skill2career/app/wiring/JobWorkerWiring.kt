@@ -13,9 +13,11 @@ import com.skill2career.app.role.AppRole
 import com.skill2career.app.role.ConditionalOnRole
 import com.skill2career.application.job.CrawlCompany
 import com.skill2career.application.job.CrawlQueue
+import com.skill2career.application.job.CrawlResults
 import com.skill2career.application.job.CrawlRuns
 import com.skill2career.application.job.JobSource
 import com.skill2career.application.job.JobStore
+import com.skill2career.application.job.RecordCrawlFailure
 import com.skill2career.application.job.ScheduleCrawl
 import com.skill2career.application.job.TrackedCompanyStore
 import org.springframework.beans.factory.annotation.Value
@@ -61,8 +63,15 @@ class JobWorkerWiring {
         companies: TrackedCompanyStore,
         sources: List<JobSource>,
         jobs: JobStore,
+        results: CrawlResults,
         clock: Clock,
-    ): CrawlCompany = CrawlCompany(companies, sources, jobs, clock)
+    ): CrawlCompany = CrawlCompany(companies, sources, jobs, results, clock)
+
+    @Bean
+    fun recordCrawlFailure(
+        results: CrawlResults,
+        clock: Clock,
+    ): RecordCrawlFailure = RecordCrawlFailure(results, clock)
 
     @Bean
     fun scheduleCrawl(

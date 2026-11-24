@@ -91,9 +91,23 @@ each costs a request from the LLM's free daily quota.
   company no longer tracked, or a board with no reader goes there at once.
 - a job its board lists again, after going inactive, is active again.
 
+## decision: the admin zone keeps the companies (2026-11-23)
+- adding a company reads its board once first, so a wrong token is refused there and then, rather than
+  failing every day. Its first crawl is queued at once, so its jobs show within a minute. A board is
+  tracked once (`UNIQUE (source, board_token)`).
+- removing a company stops tracking it, rather than deleting it: CVs and fit summaries point at its
+  jobs, and keep them. It is no longer crawled, and its live jobs close at once, so nobody is matched to
+  them. A crawl queued before is skipped, so it cannot reopen them. Adding the same board again tracks it
+  again, under the new name, with its jobs and history.
+- crawl health: each company's latest crawl is kept (`crawl_results`, one row per company, replaced by
+  the next): when, how it went (worked, failed and to be retried, or parked until tomorrow), the jobs its
+  board listed, added and closed, and why it failed. A failure is recorded on its own, as the crawl's
+  own work rolls back. With each company's live jobs, it is what the admin zone shows, and an admin can
+  crawl one company now rather than wait for the next day.
+
 ## starting companies
 Checked live on 2026-11-22: Monzo, GitLab and Cloudflare (Greenhouse), Palantir and Spotify (Lever),
-Ramp and Linear (Ashby), Blueground (Workable). The admin zone takes over the list in slice 6.
+Ramp and Linear (Ashby), Blueground (Workable). The admin zone keeps the list from slice 6.
 
 ## running it locally
 `local/crawl-now.sh` crawls every board now on the compose stack: it clears today's `crawl_runs` row and

@@ -3,6 +3,7 @@ package com.skill2career.app.wiring
 import com.skill2career.adapter.messaging.OutboxRelay
 import com.skill2career.adapter.messaging.Topics
 import com.skill2career.adapter.persistence.cv.CvRequestJpaAdapter
+import com.skill2career.adapter.persistence.job.CrawlResultJpaAdapter
 import com.skill2career.adapter.persistence.job.FitSummaryJpaAdapter
 import com.skill2career.adapter.persistence.job.JobJpaAdapter
 import com.skill2career.adapter.persistence.job.TrackedCompanyJpaAdapter
@@ -33,6 +34,7 @@ import org.springframework.scheduling.annotation.Scheduled
     CvRequestJpaAdapter::class,
     TrackedCompanyJpaAdapter::class,
     JobJpaAdapter::class,
+    CrawlResultJpaAdapter::class,
     FitSummaryJpaAdapter::class,
     OutboxRelay::class,
 )
