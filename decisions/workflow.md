@@ -12,7 +12,8 @@ GitHub Actions, as the digital-resolutions-poc. Built up a slice at a time.
 | `_zap.yml` | called | OWASP ZAP, all three scans, attacks on the api included, on a stack of its own |
 | `_cve.yml` | called | grype on every image: fails on high or critical with a fix (cve.md) |
 | `nightly.yml` | daily, or by hand | `_cve.yml`, `_zap.yml` and k6 on the newest images, keeping one issue open while any fails |
-| `_perf.yml` | called | k6, p99 targets per endpoint, nightly |
+| `_perf.yml` | called | k6 on the api at a fixed rate: fails on errors, warns on a p99 over target (performance.md) |
+| `perf-ceiling.yml` | by hand | `_perf.yml` stepping the rate up, to find the ceiling |
 | `_deploy-test.yml` | called | the helm charts installed on kind |
 | `mutation.yml` | weekly | pitest and stryker, report only |
 

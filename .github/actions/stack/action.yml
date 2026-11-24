@@ -8,6 +8,14 @@ inputs:
   tag:
     description: The images' tag, a commit hash.
     required: true
+  services:
+    description: The services to start, with what they need.
+    required: false
+    default: shell cv-worker job-worker
+  compose-files:
+    description: More compose files over the stack's, separated by colons, such as docker-compose.perf.yml.
+    required: false
+    default: ''
 
 runs:
   using: composite
@@ -18,21 +26,30 @@ runs:
         username: ${{ github.actor }}
         password: ${{ github.token }}
     # Image names are lowercase, and the owner (McCabe0) is not.
-    - name: Pull the images
+    - name: Name the images
       shell: bash
       env:
         OWNER: ${{ github.repository_owner }}
         TAG: ${{ inputs.tag }}
+        MORE: ${{ inputs.compose-files }}
       run: |
-        registry="ghcr.io/${OWNER,,}"
         {
-          echo "IMAGE_REGISTRY=$registry"
+          echo "IMAGE_REGISTRY=ghcr.io/${OWNER,,}"
           echo "IMAGE_TAG=$TAG"
-          echo "COMPOSE_FILE=docker-compose.yml:docker-compose.e2e.yml:docker-compose.ci.yml"
+          echo "COMPOSE_FILE=docker-compose.yml:docker-compose.e2e.yml:docker-compose.ci.yml${MORE:+:$MORE}"
         } >> "$GITHUB_ENV"
-        for service in api shell profile cv jobs admin; do
-          docker pull --quiet "$registry/cv-$service:$TAG"
-        done
+    # Only the images the services named need, ours by commit.
+    - name: Pull the images
+      shell: bash
+      env:
+        SERVICES: ${{ inputs.services }}
+      run: |
+        # shellcheck disable=SC2086 # one argument per service
+        docker compose pull --quiet --include-deps $SERVICES
     - name: Start the stack
       shell: bash
-      run: docker compose up --detach --no-build --wait --wait-timeout 600 shell cv-worker job-worker
+      env:
+        SERVICES: ${{ inputs.services }}
+      run: |
+        # shellcheck disable=SC2086 # one argument per service
+        docker compose up --detach --no-build --wait --wait-timeout 600 $SERVICES

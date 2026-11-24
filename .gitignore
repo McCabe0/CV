@@ -40,3 +40,4 @@ desktop.ini
 # ---------- CI reports ----------
 ci/cve-report/
 ci/zap-report/
+ci/perf-report/
