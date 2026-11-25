@@ -1,0 +1,5 @@
+apiVersion: v2
+name: common
+description: What every service's chart shares, so each gets the same hardening, labels and probes. See decisions/deploy.md.
+type: library
+version: 0.1.0

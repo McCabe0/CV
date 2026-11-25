@@ -1,6 +1,6 @@
 name: Pipeline
 
-# Every push to main. Perf, observability and the deploy test join slice by slice.
+# Every push to main. The deploy test only when the charts change, as it is slow; it runs nightly too.
 # See decisions/workflow.md.
 on:
   push:
@@ -20,6 +20,29 @@ jobs:
 
   validate-ui:
     uses: ./.github/workflows/_validate-ui.yml
+
+  # Whether this push changed the charts or the deploy test, for the deploy test.
+  charts:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.diff.outputs.changed }}
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+      # A commit before that is not here, such as a push of a new branch, counts as a change.
+      - name: Find what changed
+        id: diff
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if git cat-file -e "$BEFORE^{commit}" 2>/dev/null &&
+            git diff --quiet "$BEFORE" HEAD -- charts deploy-test .github/workflows/_deploy-test.yml; then
+            echo changed=false >> "$GITHUB_OUTPUT"
+          else
+            echo changed=true >> "$GITHUB_OUTPUT"
+          fi
 
   images:
     name: image ${{ matrix.image }}
@@ -68,3 +91,13 @@ jobs:
       contents: read
       packages: read
     uses: ./.github/workflows/_cve.yml
+
+  # The charts on a kind cluster with the images just pushed, and the playwright journeys through its
+  # gateway. Only when the charts or the test change; nightly.yml runs it every night.
+  deploy-test:
+    needs: [charts, images]
+    if: ${{ needs.charts.outputs.changed == 'true' }}
+    permissions:
+      contents: read
+      packages: read
+    uses: ./.github/workflows/_deploy-test.yml

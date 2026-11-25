@@ -1,0 +1,95 @@
+name: Deploy test
+
+# The helm charts, linted and policy scanned, then installed with a commit's pushed images on a kind
+# cluster that enforces network policies, and tested there: the network policies, then the playwright
+# journeys through its gateway. Nothing is deployed anywhere. See decisions/deploy.md.
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: The images' tag, a commit hash. This run's commit if left out.
+        required: false
+        type: string
+
+env:
+  KIND_VERSION: v0.33.0
+  HELM_VERSION: v4.3.1
+  KUBECTL_VERSION: v1.37.2
+
+jobs:
+  deploy-test:
+    runs-on: ubuntu-latest
+    # A hang must not run on.
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      packages: read
+    env:
+      IMAGE_TAG: ${{ inputs.tag || github.sha }}
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      # Pinned releases, checked against their published checksums, rather than another action.
+      - name: Install kind, helm and kubectl
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/bin" && cd "$RUNNER_TEMP/bin"
+          curl -sSLo kind "https://github.com/kubernetes-sigs/kind/releases/download/$KIND_VERSION/kind-linux-amd64"
+          curl -sSL "https://github.com/kubernetes-sigs/kind/releases/download/$KIND_VERSION/kind-linux-amd64.sha256sum" | awk '{print $1"  kind"}' | sha256sum -c -
+          curl -sSLo kubectl "https://dl.k8s.io/release/$KUBECTL_VERSION/bin/linux/amd64/kubectl"
+          echo "$(curl -sSL "https://dl.k8s.io/release/$KUBECTL_VERSION/bin/linux/amd64/kubectl.sha256")  kubectl" | sha256sum -c -
+          curl -sSLo helm.tgz "https://get.helm.sh/helm-$HELM_VERSION-linux-amd64.tar.gz"
+          echo "$(curl -sSL "https://get.helm.sh/helm-$HELM_VERSION-linux-amd64.tar.gz.sha256sum" | awk '{print $1}')  helm.tgz" | sha256sum -c -
+          tar -xzf helm.tgz --strip-components 1 linux-amd64/helm
+          chmod +x kind kubectl helm
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - name: Cache helm's charts
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/helm
+          key: helm-${{ runner.os }}-${{ hashFiles('charts/*/Chart.lock') }}
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # Image names are lowercase, and the owner (McCabe0) is not.
+      - name: Pull the commit's images
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          registry="ghcr.io/${OWNER,,}"
+          echo "IMAGE_REGISTRY=$registry" >> "$GITHUB_ENV"
+          for name in api shell profile cv jobs admin; do
+            docker pull --quiet "$registry/cv-$name:$IMAGE_TAG"
+          done
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+        with:
+          package_json_file: cv-ui/package.json
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: cv-ui/.nvmrc
+          cache: pnpm
+          cache-dependency-path: cv-ui/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: cv-ui
+      - run: pnpm exec playwright install --with-deps chromium
+        working-directory: cv-ui
+      - name: Deploy test
+        run: ./deploy-test/run.sh
+        timeout-minutes: 30
+      - name: Show the cluster
+        if: ${{ failure() }}
+        run: |
+          kubectl get pods -A -o wide || true
+          kubectl get events -A --sort-by=.lastTimestamp | tail -50 || true
+      - name: Upload the reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: deploy-test-report
+          path: |
+            deploy-test/report/
+            cv-ui/playwright-report/
+          retention-days: 7
+          if-no-files-found: ignore

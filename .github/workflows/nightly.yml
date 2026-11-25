@@ -2,8 +2,9 @@ name: Nightly
 
 # The slow checks that rarely fail, kept off every push so the pipeline stays quick, on the newest full
 # set of images each morning, or by hand: the CVE scan, as new vulnerabilities appear with no push, and
-# ZAP's attack scan of the api, and the k6 load test. Keeps one issue open while any fails, closing it
-# when all pass. See decisions/workflow.md, cve.md, zap.md and performance.md.
+# ZAP's attack scan of the api, the k6 load test, and the deploy test of the helm charts. Keeps one
+# issue open while any fails, closing it when all pass. See decisions/workflow.md, cve.md, zap.md,
+# performance.md and deploy.md.
 on:
   schedule:
     - cron: '0 6 * * *'
@@ -77,8 +78,17 @@ jobs:
     with:
       tag: ${{ needs.newest.outputs.tag }}
 
+  deploy-test:
+    needs: newest
+    permissions:
+      contents: read
+      packages: read
+    uses: ./.github/workflows/_deploy-test.yml
+    with:
+      tag: ${{ needs.newest.outputs.tag }}
+
   report:
-    needs: [newest, cve, zap, perf]
+    needs: [newest, cve, zap, perf, deploy-test]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     permissions:
@@ -93,12 +103,13 @@ jobs:
           CVE: ${{ needs.cve.result }}
           ZAP: ${{ needs.zap.result }}
           PERF: ${{ needs.perf.result }}
+          DEPLOY: ${{ needs.deploy-test.result }}
           RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           title='Nightly checks failed'
-          results="finding the images: $NEWEST, cve: $CVE, zap: $ZAP, perf: $PERF"
+          results="finding the images: $NEWEST, cve: $CVE, zap: $ZAP, perf: $PERF, deploy test: $DEPLOY"
           issue=$(gh issue list --state open --search "in:title \"$title\"" --json number --jq '.[0].number // empty')
-          if [[ $NEWEST == success && $CVE == success && $ZAP == success && $PERF == success ]]; then
+          if [[ $NEWEST == success && $CVE == success && $ZAP == success && $PERF == success && $DEPLOY == success ]]; then
             if [[ -n $issue ]]; then gh issue close "$issue" --comment "Passing again: $RUN"; fi
           elif [[ -n $issue ]]; then
             gh issue comment "$issue" --body "Still failing ($results): $RUN"
