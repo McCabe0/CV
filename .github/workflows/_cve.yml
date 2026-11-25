@@ -19,7 +19,7 @@ jobs:
       packages: read
 
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           registry: ghcr.io
@@ -47,7 +47,7 @@ jobs:
           for report in ci/cve-report/*.txt; do
             printf '### %s\n\n```\n%s\n```\n\n' "$(basename "$report" .txt)" "$(cat "$report")" >> "$GITHUB_STEP_SUMMARY"
           done
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         if: ${{ !cancelled() }}
         with:
           node-version-file: cv-ui/.nvmrc
@@ -59,7 +59,7 @@ jobs:
           node ci/cve/unfixed.mjs ci/cve-report >> "$GITHUB_STEP_SUMMARY"
       - name: Upload the reports
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: cve-report
           path: ci/cve-report/
