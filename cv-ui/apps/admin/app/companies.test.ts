@@ -83,6 +83,14 @@ describe('readCompanyForm', () => {
     })
   })
 
+  it('takes a name and token of exactly the longest allowed', () => {
+    const { errors } = readCompanyForm(
+      form({ name: 'a'.repeat(100), source: 'LEVER', boardToken: 'b'.repeat(100) }),
+    )
+
+    expect(errors).toEqual({})
+  })
+
   it('refuses a name or token that is too long', () => {
     const { errors } = readCompanyForm(
       form({ name: 'a'.repeat(101), source: 'LEVER', boardToken: 'b'.repeat(101) }),

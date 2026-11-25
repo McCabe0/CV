@@ -62,6 +62,40 @@ describe('login', () => {
     expect(cookie.secure).toBe(true)
   })
 
+  it.each(['/profile', '/jobs?remote=true', '/cv/requests/7'])(
+    'returns the user, once signed in, to the page they asked for: %s',
+    async (returnTo) => {
+      jest.mocked(completeLogin).mockResolvedValue(session)
+      const started = await login(
+        request(`/auth/login?returnTo=${encodeURIComponent(returnTo)}`),
+        config,
+      )
+
+      const finished = await callback(
+        request('/auth/callback?code=1', {
+          cookies: { [LOGIN_COOKIE]: started.cookies.get(LOGIN_COOKIE)!.value },
+        }),
+        config,
+      )
+
+      expect(finished.headers.get('location')).toBe(`https://cv.example.com${returnTo}`)
+    },
+  )
+
+  it('returns the user home when they asked for nowhere', async () => {
+    jest.mocked(completeLogin).mockResolvedValue(session)
+    const started = await login(request('/auth/login'), config)
+
+    const finished = await callback(
+      request('/auth/callback?code=1', {
+        cookies: { [LOGIN_COOKIE]: started.cookies.get(LOGIN_COOKIE)!.value },
+      }),
+      config,
+    )
+
+    expect(finished.headers.get('location')).toBe('https://cv.example.com/')
+  })
+
   it.each(['https://evil.example.com', '//evil.example.com', '/\\evil.example.com'])(
     'never returns the user to another site: %s',
     async (returnTo) => {

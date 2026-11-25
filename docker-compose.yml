@@ -117,7 +117,7 @@ services:
 
   # Observability. The apps only send to the collector. See decisions/observability.md.
   collector:
-    image: otel/opentelemetry-collector-contrib:0.164.0-386
+    image: otel/opentelemetry-collector-contrib:0.164.0
     command: --config=/etc/collector/config.yaml
     ports:
       - "4318:4318"

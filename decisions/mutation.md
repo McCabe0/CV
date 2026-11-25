@@ -132,6 +132,8 @@ What survived, worth a look:
   `path` and the login cookie's `maxAge` are not asserted, nor clearing them on sign out.
 - the ui's length limits: `>` turned to `>=` survives in the profile and admin forms' checks, as no test
   sits at the limit.
+- tests for the two above were added on 2026-11-25: sign in's round trip to `returnTo`, the cookies'
+  settings and clearing, and every form limit at exactly its length. Each fails with its mutant put back.
 - `domain`: `CrawlResult.worked`, `Matching.rank`'s ties and `Review.approved` have conditions no test
   turns over.
 
