@@ -1,0 +1,186 @@
+# The service's values on the deploy test's kind cluster, beside the platform chart, which stands in for
+# what a cloud would give it. The addresses compose has, so the playwright journeys and the test realm
+# see no difference: the browser reaches the shell at localhost:3000 and keycloak at localhost:8180, both
+# through the gateway. The LLM and the job boards are wiremock, playing them as in docker-compose.e2e.yml.
+# run.sh sets each image. See decisions/deploy.md.
+
+# Where the platform is, and the gateway's own namespace, as envoy's proxies run there.
+x-gateway: &gateway
+  name: public
+  namespace: platform
+  sectionName: http
+x-from-gateway: &from-gateway
+  - from:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: envoy-gateway-system
+x-to-keycloak: &to-keycloak
+  to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: platform
+      podSelector:
+        matchLabels:
+          app: keycloak
+  ports:
+    - port: 8080
+x-to-postgres: &to-postgres
+  to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: platform
+      podSelector:
+        matchLabels:
+          app: postgres
+  ports:
+    - port: 5432
+x-to-kafka: &to-kafka
+  to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: platform
+      podSelector:
+        matchLabels:
+          app: kafka
+  ports:
+    - port: 9092
+x-to-boards: &to-boards
+  to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: platform
+      podSelector:
+        matchLabels:
+          app: boards
+  ports:
+    - port: 8080
+
+# One of each, with less asked for, as the whole cluster shares a ci runner. What is asked for is only
+# reserved, so the limits still let a pod use more when it is free.
+x-small-api: &small-api
+  replicas: 1
+  resources:
+    requests: {cpu: 100m, memory: 384Mi}
+    limits: {cpu: "2", memory: 768Mi}
+x-small-ui: &small-ui
+  replicas: 1
+  resources:
+    requests: {cpu: 25m, memory: 128Mi}
+    limits: {cpu: "1", memory: 512Mi}
+
+# As compose's x-api-environment, with the platform's addresses.
+x-api-env: &api-env
+  DATASOURCE_URL: jdbc:postgresql://postgres.platform:5432/skill2career
+  SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://localhost:8180/realms/skill2career
+  SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak.platform:8080/realms/skill2career/protocol/openid-connect/certs
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka.platform:9092
+  MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://collector:4318/v1/traces
+  MANAGEMENT_OPENTELEMETRY_LOGGING_EXPORT_OTLP_ENDPOINT: http://collector:4318/v1/logs
+  MANAGEMENT_OTLP_METRICS_EXPORT_ENABLED: "true"
+  MANAGEMENT_OTLP_METRICS_EXPORT_URL: http://collector:4318/v1/metrics
+  MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
+  # A heap that fits the smaller limit.
+  JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=60
+  LLM_PROVIDER: gemini
+  LLM_GEMINI_BASEURL: http://gemini.platform:8080/v1beta
+  JOBS_GREENHOUSE_URL: http://boards.platform:8080
+  JOBS_LEVER_URL: http://boards.platform:8080
+  JOBS_ASHBY_URL: http://boards.platform:8080
+  JOBS_WORKABLE_URL: http://boards.platform:8080
+x-api-secrets: &api-secrets
+  - {name: SPRING_DATASOURCE_USERNAME, secret: database, key: username}
+  - {name: SPRING_DATASOURCE_PASSWORD, secret: database, key: password}
+
+x-ui-env: &ui-env
+  NODE_ENV: production
+  KEYCLOAK_ISSUER: http://localhost:8180/realms/skill2career
+  KEYCLOAK_INTERNAL_URL: http://keycloak.platform:8080
+  KEYCLOAK_ALLOW_HTTP: "true"
+  KEYCLOAK_CLIENT_ID: cv-ui
+  APP_URL: http://localhost:3000
+  API_URL: http://api:8080/api
+  PROFILE_URL: http://profile:3000
+  CV_URL: http://cv:3000
+  JOBS_URL: http://jobs:3000
+  ADMIN_URL: http://admin:3000
+x-ui-secrets: &ui-secrets
+  - {name: KEYCLOAK_CLIENT_SECRET, secret: ui, key: client-secret}
+  - {name: SESSION_SECRET, secret: ui, key: session-secret}
+
+# The api reads a board when an admin adds its company, so it reaches the boards as the job-worker does.
+api:
+  <<: *small-api
+  env:
+    <<: *api-env
+    APP_ROLES: api
+    OTEL_SERVICE_NAME: cv-api
+  secretEnv: *api-secrets
+  route:
+    gateway: *gateway
+  networkPolicy:
+    extraIngress: *from-gateway
+    extraEgress: [*to-postgres, *to-kafka, *to-keycloak, *to-boards]
+
+cv-worker:
+  <<: *small-api
+  env:
+    <<: *api-env
+    APP_ROLES: cv-worker
+    OTEL_SERVICE_NAME: cv-worker
+  # Only the cv-worker calls the LLM.
+  secretEnv:
+    - {name: SPRING_DATASOURCE_USERNAME, secret: database, key: username}
+    - {name: SPRING_DATASOURCE_PASSWORD, secret: database, key: password}
+    - {name: GEMINI_API_KEY, secret: llm, key: gemini-api-key}
+  networkPolicy:
+    extraEgress:
+      - *to-postgres
+      - *to-kafka
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                kubernetes.io/metadata.name: platform
+            podSelector:
+              matchLabels:
+                app: gemini
+        ports:
+          - port: 8080
+
+# Its first check for the day's crawl a few seconds after it starts, not a minute, as in compose's e2e.
+job-worker:
+  <<: *small-api
+  env:
+    <<: *api-env
+    APP_ROLES: job-worker
+    OTEL_SERVICE_NAME: job-worker
+    JOBS_CRAWL_FIRST_CHECK_MS: "5000"
+  secretEnv: *api-secrets
+  networkPolicy:
+    extraEgress: [*to-postgres, *to-kafka, *to-boards]
+
+shell:
+  <<: *small-ui
+  env: *ui-env
+  secretEnv: *ui-secrets
+  route:
+    gateway: *gateway
+  networkPolicy:
+    extraIngress: *from-gateway
+    extraEgress: [*to-keycloak]
+
+profile: &zone
+  <<: *small-ui
+  env: *ui-env
+  secretEnv: *ui-secrets
+  networkPolicy:
+    extraEgress: [*to-keycloak]
+
+cv: *zone
+jobs: *zone
+admin: *zone
+
+# Nothing to send to on kind: the roles only have to reach it.
+collector:
+  resources:
+    requests: {cpu: 25m, memory: 64Mi}
+    limits: {cpu: 500m, memory: 512Mi}

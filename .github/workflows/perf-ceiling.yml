@@ -1,0 +1,24 @@
+name: Load test ceiling
+
+# By hand, on a commit the pipeline has built: steps the rate up until the api breaks, to find the load
+# the nightly run should hold. See decisions/performance.md.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The commit whose images to test. The branch's newest commit if left empty.
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  perf:
+    permissions:
+      contents: read
+      packages: read
+    uses: ./.github/workflows/_perf.yml
+    with:
+      tag: ${{ inputs.tag || github.sha }}
+      profile: step

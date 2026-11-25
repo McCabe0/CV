@@ -1,0 +1,7 @@
+# The cluster the deploy test installs the charts on. Kind's own network plugin, kindnet, enforces network
+# policies since kind 0.24, so no other is installed; run.sh checks that it does. See decisions/deploy.md.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: skill2career
+nodes:
+  - role: control-plane

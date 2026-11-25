@@ -1,0 +1,104 @@
+name: Mutation testing
+
+# Whether the tests would notice a change, not only that the code ran. Weekly and report only: no
+# threshold, a score fails nothing, and it opens no issue and commits nothing. The scores and the mutants
+# that survived are in the run's summary, and the reports are kept. A workflow of its own, as a slow job
+# in pipeline.yml would hold up every push. See decisions/mutation.md.
+on:
+  schedule:
+    - cron: '0 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: cv-api
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - name: Set up JDK 25
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: gradle
+      # Each module mutates its own code with its own tests, and the root merges their html reports.
+      - run: ./gradlew pitest pitestReportAggregate --continue --no-daemon
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        if: ${{ !cancelled() }}
+        with:
+          node-version-file: cv-ui/.nvmrc
+      - name: Show the score
+        if: ${{ !cancelled() }}
+        run: >-
+          node ../ci/mutation/summary.mjs pitest api
+          domain/build/reports/pitest/mutations.xml
+          application/build/reports/pitest/mutations.xml
+          adapters/build/reports/pitest/mutations.xml
+          >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload the report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: mutation-api
+          path: |
+            cv-api/build/reports/pitest/
+            cv-api/*/build/reports/pitest/
+          retention-days: 30
+
+  ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      # Each app and package is scored on its own, so one that breaks says nothing of the rest.
+      fail-fast: false
+      matrix:
+        dir:
+          - apps/admin
+          - apps/cv
+          - apps/jobs
+          - apps/profile
+          - apps/shell
+          - packages/api-client
+          - packages/auth
+          - packages/ui
+    defaults:
+      run:
+        working-directory: cv-ui
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+        with:
+          package_json_file: cv-ui/package.json
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: cv-ui/.nvmrc
+          cache: pnpm
+          cache-dependency-path: cv-ui/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      # From the app's or package's own directory: see stryker.shared.mjs.
+      - run: pnpm mutation
+        working-directory: cv-ui/${{ matrix.dir }}
+      - name: Show the score
+        if: ${{ !cancelled() }}
+        run: node ../ci/mutation/summary.mjs stryker '${{ matrix.dir }}' '${{ matrix.dir }}/reports/mutation/mutation.json' >> "$GITHUB_STEP_SUMMARY"
+      - name: Name the report
+        if: ${{ !cancelled() }}
+        id: name
+        run: echo "name=mutation-${MATRIX_DIR//\//-}" >> "$GITHUB_OUTPUT"
+        env:
+          MATRIX_DIR: ${{ matrix.dir }}
+      - name: Upload the report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: ${{ steps.name.outputs.name }}
+          path: cv-ui/${{ matrix.dir }}/reports/mutation/
+          retention-days: 30

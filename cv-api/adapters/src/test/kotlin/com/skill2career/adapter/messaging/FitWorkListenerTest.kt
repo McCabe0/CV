@@ -53,6 +53,17 @@ class FitWorkListenerTest {
     }
 
     @Test
+    fun `logs what became of the summary`() {
+        whenever(write.write(42)) doReturn FitSummary(id = 42, ownerId = OWNER, jobId = 7).written("It fits.")
+
+        listener.onWork(message)
+
+        val info = logged.list.single()
+        assertThat(info.level).isEqualTo(Level.INFO)
+        assertThat(info.formattedMessage).contains("Fit summary 42", "job 7", "READY")
+    }
+
+    @Test
     fun `skips an event it has already handled, as kafka can deliver one twice`() {
         whenever(processed.existsById(event)) doReturn true
 

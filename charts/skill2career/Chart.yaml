@@ -1,0 +1,43 @@
+apiVersion: v2
+name: skill2career
+description: The whole service in one install - the api in its three roles, the ui's shell and four zones, and the OpenTelemetry collector. An environment's values file says where what it does not run is - postgres, kafka, keycloak, the LLM and the job boards. See decisions/deploy.md.
+type: application
+version: 0.1.0
+dependencies:
+  # One image, three roles, each scaled on its own, as in compose.
+  - name: api
+    version: 0.1.0
+    repository: file://../api
+  - name: api
+    alias: cv-worker
+    version: 0.1.0
+    repository: file://../api
+  - name: api
+    alias: job-worker
+    version: 0.1.0
+    repository: file://../api
+  - name: ui
+    alias: shell
+    version: 0.1.0
+    repository: file://../ui
+  - name: ui
+    alias: profile
+    version: 0.1.0
+    repository: file://../ui
+  - name: ui
+    alias: cv
+    version: 0.1.0
+    repository: file://../ui
+  - name: ui
+    alias: jobs
+    version: 0.1.0
+    repository: file://../ui
+  - name: ui
+    alias: admin
+    version: 0.1.0
+    repository: file://../ui
+  # The collector's own chart. Values say where it sends: the platform's backends, not ours.
+  - name: opentelemetry-collector
+    alias: collector
+    version: 0.178.2
+    repository: https://open-telemetry.github.io/opentelemetry-helm-charts

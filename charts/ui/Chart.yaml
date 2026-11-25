@@ -1,0 +1,9 @@
+apiVersion: v2
+name: ui
+description: One of the ui's five apps, the shell or a zone (profile, cv, jobs, admin), which differ only by the image and its base path. The umbrella chart installs it once for each. See decisions/deploy.md.
+type: application
+version: 0.1.0
+dependencies:
+  - name: common
+    version: 0.1.0
+    repository: file://../common

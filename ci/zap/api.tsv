@@ -1,0 +1,4 @@
+# OWASP ZAP rules for the api scan, from its openapi docs. A rule not listed here warns, and any warning
+# fails the scan. Each accepted rule says why. Format: rule id, IGNORE / WARN / FAIL, then the reason,
+# tab separated. See decisions/zap.md.
+100001	IGNORE	(Unexpected Content-Type: the attacks' encoded paths, eg /api/admin/companies/%00, which tomcat refuses itself with its own plain 400 page, before spring, showing no server name or version; every path spring answers is json)

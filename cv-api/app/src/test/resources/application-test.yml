@@ -1,6 +1,13 @@
 app:
   roles: api
 
+# Spring keeps each test's context open, to reuse it, each with its own pool. Small pools keep them all
+# under the test postgres's 100 connections; no test needs more than a few at once.
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 4
+
 # Not a real key: the pipeline test points gemini at wiremock, and no other test calls an LLM.
 llm:
   gemini:

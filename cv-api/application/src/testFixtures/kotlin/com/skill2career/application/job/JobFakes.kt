@@ -1,5 +1,6 @@
 package com.skill2career.application.job
 
+import com.skill2career.domain.job.CrawlResult
 import com.skill2career.domain.job.Job
 import com.skill2career.domain.job.JobFilter
 import com.skill2career.domain.job.JobPosting
@@ -49,7 +50,12 @@ class InMemoryTrackedCompanyStore(
 
     override fun find(id: Long): TrackedCompany? = companies[id]
 
-    fun save(company: TrackedCompany): TrackedCompany {
+    override fun findByBoard(
+        source: SourceType,
+        boardToken: String,
+    ): TrackedCompany? = companies.values.find { it.source == source && it.boardToken == boardToken }
+
+    override fun save(company: TrackedCompany): TrackedCompany {
         val saved = if (company.id == null) company.copy(id = nextId++) else company
         companies[saved.id!!] = saved
         return saved
@@ -75,6 +81,22 @@ class InMemoryJobStore : JobStore {
             this.jobs[saved.id!!] = saved
         }
     }
+
+    override fun liveCounts(): Map<Long, Int> =
+        jobs.values
+            .filter { it.active }
+            .groupingBy { it.companyId }
+            .eachCount()
+}
+
+class InMemoryCrawlResults : CrawlResults {
+    private val recorded = mutableListOf<CrawlResult>()
+
+    override fun record(result: CrawlResult) {
+        recorded += result
+    }
+
+    override fun latest(): Map<Long, CrawlResult> = recorded.associateBy { it.companyId }
 }
 
 class FakeJobSource(

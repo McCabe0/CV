@@ -1,0 +1,55 @@
+name: Start the stack
+description: >
+  The e2e stack (docker-compose.yml, docker-compose.e2e.yml) from a commit's pushed images, through
+  docker-compose.ci.yml, not built again. Sets COMPOSE_FILE, so later steps' docker compose commands, such
+  as showing the logs, reach the same stack. The job needs packages read. See decisions/workflow.md.
+
+inputs:
+  tag:
+    description: The images' tag, a commit hash.
+    required: true
+  services:
+    description: The services to start, with what they need.
+    required: false
+    default: shell cv-worker job-worker
+  compose-files:
+    description: More compose files over the stack's, separated by colons, such as docker-compose.perf.yml.
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
+    # Image names are lowercase, and the owner (McCabe0) is not.
+    - name: Name the images
+      shell: bash
+      env:
+        OWNER: ${{ github.repository_owner }}
+        TAG: ${{ inputs.tag }}
+        MORE: ${{ inputs.compose-files }}
+      run: |
+        {
+          echo "IMAGE_REGISTRY=ghcr.io/${OWNER,,}"
+          echo "IMAGE_TAG=$TAG"
+          echo "COMPOSE_FILE=docker-compose.yml:docker-compose.e2e.yml:docker-compose.ci.yml${MORE:+:$MORE}"
+        } >> "$GITHUB_ENV"
+    # Only the images the services named need, ours by commit.
+    - name: Pull the images
+      shell: bash
+      env:
+        SERVICES: ${{ inputs.services }}
+      run: |
+        # shellcheck disable=SC2086 # one argument per service
+        docker compose pull --quiet --include-deps $SERVICES
+    - name: Start the stack
+      shell: bash
+      env:
+        SERVICES: ${{ inputs.services }}
+      run: |
+        # shellcheck disable=SC2086 # one argument per service
+        docker compose up --detach --no-build --wait --wait-timeout 600 $SERVICES

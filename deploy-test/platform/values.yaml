@@ -1,0 +1,31 @@
+# The namespace the service is installed in, for its secrets and for who may reach postgres and kafka.
+appNamespace: skill2career
+
+# The same as compose's, so the cluster runs what the other checks do.
+images:
+  postgres: postgres:16
+  kafka: apache/kafka:4.1.0
+  keycloak: quay.io/keycloak/keycloak:26.0
+  wiremock: wiremock/wiremock:3.13.2
+
+# The same as compose's, as the test realm and the journeys expect them.
+database:
+  name: skill2career
+  username: skill2career
+  password: skill2career
+
+ui:
+  clientSecret: cv-ui-secret
+  sessionSecret: kind-deploy-test-session-secret-not-for-production
+
+# Wiremock takes any key.
+llm:
+  geminiApiKey: deploy-test-not-a-real-key
+
+# Keycloak's address as the browser and the tokens give it, as compose's.
+keycloakHostname: http://localhost:8180
+
+# The realm, from where compose reads it, given by run.sh with --set-file, so there is no copy. Wiremock's
+# mappings are config maps run.sh makes from compose's directories, for the same reason.
+files:
+  realm: ""

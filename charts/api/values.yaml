@@ -1,0 +1,61 @@
+# What every environment shares. The umbrella chart sets each role's APP_ROLES, and an environment's
+# values say where the database, kafka, keycloak, the LLM and the collector are, and which secrets hold
+# the database's password and the LLM's key.
+
+image:
+  repository: ghcr.io/mccabe0/cv-api
+  # One of these, the digest preferred: the one the pipeline tested.
+  tag: ""
+  digest: ""
+
+port: 8080
+replicas: 2
+
+# Production's: 1 request in 10 is traced.
+env:
+  MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "0.1"
+
+# Each is {name, secret, key}, so no secret is in values.
+secretEnv: []
+
+# Memory for the jvm's heap and what is around it.
+resources:
+  requests:
+    cpu: 500m
+    memory: 512Mi
+  limits:
+    cpu: "2"
+    memory: 1Gi
+
+# Every role serves its health, the workers too.
+probes:
+  startup: /api/health/liveness
+  readiness: /api/health/readiness
+  liveness: /api/health/liveness
+
+# Spring and tomcat write here. Nothing else is writable.
+writableDirs:
+  - /tmp
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 4
+  cpuPercent: 70
+
+# Ingress and egress rules beyond dns, as each environment's are its own.
+networkPolicy:
+  enabled: true
+  ingress: []
+  egress: []
+  extraIngress: []
+  extraEgress: []
+
+# Only the api role is reached from outside. The umbrella chart turns it off for the workers.
+route:
+  enabled: true
+  path: /api
+  hostnames: []
+  gateway: {}
+  # Gateway api filters on the route, such as headers to add.
+  filters: []

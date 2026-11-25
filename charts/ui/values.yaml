@@ -1,0 +1,56 @@
+# What every app and environment shares. The umbrella chart gives each app its image, base path and
+# writable cache, and an environment's values say where keycloak, the api and the other apps are.
+
+image:
+  repository: ""
+  tag: ""
+  digest: ""
+
+port: 3000
+replicas: 2
+
+env:
+  NODE_ENV: production
+
+# Each is {name, secret, key}, so no secret is in values.
+secretEnv: []
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 192Mi
+  limits:
+    cpu: "1"
+    memory: 512Mi
+
+# Each app's base path. A redirect counts as up.
+probes:
+  startup: /
+  readiness: /
+  liveness: /
+
+# Next writes its cache under the app's .next, and node to /tmp. Nothing else is writable.
+writableDirs:
+  - /tmp
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 4
+  cpuPercent: 70
+
+networkPolicy:
+  enabled: true
+  ingress: []
+  egress: []
+  extraIngress: []
+  extraEgress: []
+
+# Only the shell is reached from outside, as in compose: it routes each zone's base path to it.
+route:
+  enabled: false
+  path: /
+  hostnames: []
+  gateway: {}
+  # Gateway api filters on the route, such as headers to add.
+  filters: []

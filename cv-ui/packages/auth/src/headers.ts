@@ -12,6 +12,9 @@ export const SECURITY_HEADERS = [
   },
   { key: 'Cross-Origin-Resource-Policy', value: 'same-origin' },
   { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+  // A page loads nothing from another origin, so it can refuse anything that has not opted in. With
+  // the opener policy, it is cross origin isolated. Found by the ZAP scan (decisions/zap.md).
+  { key: 'Cross-Origin-Embedder-Policy', value: 'require-corp' },
 ]
 
 /**

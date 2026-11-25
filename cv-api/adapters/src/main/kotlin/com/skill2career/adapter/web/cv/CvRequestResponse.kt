@@ -79,8 +79,11 @@ data class AnswerRequest(
 
 @Schema(description = "The candidate's answers. A question left out is skipped.")
 data class AnswersRequest(
-    @field:Valid @field:Size(max = 5)
-    val answers: List<AnswerRequest> = emptyList(),
+    @field:Size(max = 5)
+    val answers: List<
+        @Valid
+        AnswerRequest,
+    > = emptyList(),
 ) {
     fun toDomain() = answers.map { Answer(it.questionId, it.text) }
 }

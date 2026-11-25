@@ -48,13 +48,15 @@ class FitWorkListener(
     fun onWork(payload: String) {
         val message = FitMessage.read(payload)
         if (processed.existsById(message.eventId)) return
-        try {
-            write.write(message.summaryId)
-        } catch (failure: Exception) {
-            log.warn("Fit summary {} could not be written, it will be retried: {}", message.summaryId, failure.message)
-            throw failure
-        }
+        val summary =
+            try {
+                write.write(message.summaryId)
+            } catch (failure: Exception) {
+                log.warn("Fit summary {} could not be written, it will be retried: {}", message.summaryId, failure.message)
+                throw failure
+            }
         processed.save(ProcessedEventEntity(message.eventId))
+        log.info("Fit summary {} for job {} is {}", message.summaryId, summary.jobId, summary.status)
     }
 
     /** Every try failed: the summary fails too, so the candidate can ask again later. */

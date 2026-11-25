@@ -1,7 +1,7 @@
 # Builds one app. docker build --build-arg APP=shell -t cv-shell .
-FROM node:24-alpine@sha256:a34ab6d7f6f4813f4d0c5469d74685604b962fbdbf5793a7bc7b4998ecb867c8 AS builder
+FROM node:24-alpine@sha256:116b800c3754b440ee0aa3ed2f20f5bf3d99a554bfd9adeea09ea8017f6e85f5 AS builder
 ARG APP
-RUN test -n "$APP" || (echo "APP build arg is required: shell, profile, cv or jobs" && false)
+RUN test -n "$APP" || (echo "APP build arg is required: shell, profile, cv, jobs or admin" && false)
 WORKDIR /app
 RUN corepack enable
 
@@ -21,12 +21,16 @@ COPY apps/${APP} apps/${APP}
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm --filter "@cv/${APP}" build
 
-FROM node:24-alpine@sha256:a34ab6d7f6f4813f4d0c5469d74685604b962fbdbf5793a7bc7b4998ecb867c8
+FROM node:24-alpine@sha256:116b800c3754b440ee0aa3ed2f20f5bf3d99a554bfd9adeea09ea8017f6e85f5
 ARG APP
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
 
 # Only node runs here, so the image's package managers, and their vulnerabilities, are left out.
 RUN rm -rf /usr/local/lib/node_modules /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
+
+# Fixed in alpine, not yet in the base image: CVE-2026-4738 (zlib, critical) and CVE-2026-95691, -95692,
+# -88823 and -107496 (openssl, high). Goes once dependabot moves the base image to one that has them.
+RUN apk upgrade --no-cache zlib libssl3 libcrypto3
 
 RUN addgroup --gid 2000 --system appgroup && \
     adduser --uid 2000 --system appuser -G appgroup

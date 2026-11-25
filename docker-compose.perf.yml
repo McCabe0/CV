@@ -1,0 +1,53 @@
+# The load test's stack, over docker-compose.yml and docker-compose.e2e.yml (and docker-compose.ci.yml in
+# ci): only the api and what it needs, run by ci/perf.sh. See decisions/performance.md.
+# - the api and the database get 2 cores each, so neither has more of the machine than the other, and a
+#   run compares with the last.
+# - the api reaches the database through toxiproxy, which adds a real network's latency once the data
+#   is seeded: they share a machine here, and would not in production.
+# - k6 runs inside the network, so it reaches the api and keycloak by name. Keycloak's hostname is fixed,
+#   so its tokens carry the issuer the api expects either way.
+services:
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:2.13.0
+    command: -host=0.0.0.0 -config=/config/toxiproxy.json
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./ci/perf/toxiproxy.json:/config/toxiproxy.json:ro
+
+  db:
+    cpus: 2
+
+  api:
+    cpus: 2
+    depends_on:
+      toxiproxy:
+        condition: service_started
+    environment:
+      DATASOURCE_URL: jdbc:postgresql://toxiproxy:5432/skill2career
+
+  perf:
+    image: grafana/k6:2.3.0
+    profiles: [perf]
+    depends_on:
+      api:
+        condition: service_healthy
+    working_dir: /perf
+    command: run load.ts
+    environment:
+      PERF_API_URL: http://api:8080/api
+      PERF_KEYCLOAK_URL: http://keycloak:8080
+      PERF_TOXIPROXY_URL: http://toxiproxy:8474
+      K6_WEB_DASHBOARD: "true"
+      K6_WEB_DASHBOARD_EXPORT: /report/report.html
+      PERF_PROFILE: ${PERF_PROFILE:-}
+      PERF_RATE: ${PERF_RATE:-}
+      PERF_STEPS: ${PERF_STEPS:-}
+      PERF_STEP_SECONDS: ${PERF_STEP_SECONDS:-}
+      PERF_CANDIDATES: ${PERF_CANDIDATES:-}
+      PERF_DB_LATENCY_MS: ${PERF_DB_LATENCY_MS:-}
+      PERF_P99_TARGET_MS: ${PERF_P99_TARGET_MS:-}
+    volumes:
+      - ./ci/perf:/perf:ro
+      - ./ci/perf-report:/report

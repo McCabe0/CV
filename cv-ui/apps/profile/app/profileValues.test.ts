@@ -133,6 +133,37 @@ describe('validate', () => {
     expect(errorsFor({ [field]: value })).toEqual({ [field]: message })
   })
 
+  // At the limit is allowed: only past it is too long. A field with a format of its own may still be
+  // wrong for that, so only its length is checked here.
+  it.each([
+    ['name', 100],
+    ['experience', 5000],
+    ['education', 2000],
+    ['targetRole', 100],
+    ['yearsOfExperience', 20],
+    ['location', 100],
+    ['workAuthorization', 100],
+    ['phone', 30],
+  ] as const)('takes %s at exactly its limit, %i characters', (field, length) => {
+    expect(errorsFor({ [field]: 'a'.repeat(length) })[field] ?? '').not.toMatch(/or fewer$/)
+  })
+
+  it.each([
+    ['skills', 50, ',', 50],
+    ['projects', 20, '\n', 500],
+    ['certifications', 20, '\n', 200],
+    ['languages', 20, '\n', 50],
+  ] as const)(
+    'takes the %s list at exactly its limits, %i of them, each as long as allowed',
+    (field, count, separator, length) => {
+      const many = Array.from({ length: count }, (_, i) => `${i}`.padEnd(5, 'x')).join(separator)
+      const longest = 'a'.repeat(length)
+
+      expect(errorsFor({ [field]: many })).toEqual({})
+      expect(errorsFor({ [field]: longest })).toEqual({})
+    },
+  )
+
   it.each(['casey', 'casey@', '@example.com', 'casey example@example.com'])(
     'needs a real email address: %s',
     (email) => {

@@ -1,0 +1,216 @@
+# What every environment shares: each role's and app's image and base path, and which of this release's
+# services may talk to which. An environment's values add its images' digests, where postgres, kafka,
+# keycloak, the LLM, the job boards and the gateway are, the secrets' names, and its own network rules.
+# See decisions/deploy.md.
+
+# Its servers call the api, which serves them only. The gateway is the environment's to add.
+api:
+  env:
+    APP_ROLES: api
+    OTEL_SERVICE_NAME: cv-api
+  networkPolicy:
+    ingress:
+      - from:
+          - podSelector:
+              matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values: [shell, profile, cv, jobs, admin]
+    egress: &to-collector
+      - to:
+          - podSelector:
+              matchLabels:
+                app.kubernetes.io/name: collector
+        ports:
+          - port: 4318
+
+# Works from kafka, so nothing calls it. Its LLM is the environment's to add.
+cv-worker:
+  env:
+    APP_ROLES: cv-worker
+    OTEL_SERVICE_NAME: cv-worker
+  route:
+    enabled: false
+  networkPolicy:
+    egress: *to-collector
+
+# One crawl a day, which a database row keeps to one worker, so one is enough. Its job boards are the
+# environment's to add.
+job-worker:
+  replicas: 1
+  env:
+    APP_ROLES: job-worker
+    OTEL_SERVICE_NAME: job-worker
+  route:
+    enabled: false
+  networkPolicy:
+    egress: *to-collector
+
+# Reached from outside through the gateway, which the environment adds. It routes each zone's base path
+# to the zone.
+shell:
+  image:
+    repository: ghcr.io/mccabe0/cv-shell
+  writableDirs:
+    - /tmp
+    - /app/apps/shell/.next/cache
+  route:
+    enabled: true
+    path: /
+  networkPolicy:
+    egress:
+      - to:
+          - podSelector:
+              matchLabels:
+                app.kubernetes.io/name: api
+        ports:
+          - port: 8080
+      - to:
+          - podSelector:
+              matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values: [profile, cv, jobs, admin]
+        ports:
+          - port: 3000
+
+# Each zone only through the shell, as in compose.
+profile:
+  image:
+    repository: ghcr.io/mccabe0/cv-profile
+  probes:
+    startup: /profile
+    readiness: /profile
+    liveness: /profile
+  writableDirs:
+    - /tmp
+    - /app/apps/profile/.next/cache
+  networkPolicy: &zone-policy
+    ingress:
+      - from:
+          - podSelector:
+              matchLabels:
+                app.kubernetes.io/name: shell
+    egress:
+      - to:
+          - podSelector:
+              matchLabels:
+                app.kubernetes.io/name: api
+        ports:
+          - port: 8080
+
+cv:
+  image:
+    repository: ghcr.io/mccabe0/cv-cv
+  probes:
+    startup: /cv
+    readiness: /cv
+    liveness: /cv
+  writableDirs:
+    - /tmp
+    - /app/apps/cv/.next/cache
+  networkPolicy: *zone-policy
+
+jobs:
+  image:
+    repository: ghcr.io/mccabe0/cv-jobs
+  probes:
+    startup: /jobs
+    readiness: /jobs
+    liveness: /jobs
+  writableDirs:
+    - /tmp
+    - /app/apps/jobs/.next/cache
+  networkPolicy: *zone-policy
+
+admin:
+  image:
+    repository: ghcr.io/mccabe0/cv-admin
+  probes:
+    startup: /admin
+    readiness: /admin
+    liveness: /admin
+  writableDirs:
+    - /tmp
+    - /app/apps/admin/.next/cache
+  networkPolicy: *zone-policy
+
+# Everything the api's roles send goes through it, so they only know otlp and this address. Where it
+# sends is the environment's: the platform's backends in production.
+collector:
+  fullnameOverride: collector
+  mode: deployment
+  # It never calls the kubernetes api, so it has no token for it.
+  serviceAccount:
+    automountServiceAccountToken: false
+  replicaCount: 1
+  # By digest, as every image here. The tag says which release it is.
+  image:
+    repository: otel/opentelemetry-collector-contrib
+    tag: "0.164.0"
+    digest: sha256:340c9ca6a36617084c6661bdc4f0fe92b7cda5a805d61673ec8db375fddc522b
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    seccompProfile:
+      type: RuntimeDefault
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: ["ALL"]
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  # otlp over http only, as the api sends.
+  ports:
+    otlp:
+      enabled: false
+    otlp-http:
+      enabled: true
+    jaeger-compact:
+      enabled: false
+    jaeger-thrift:
+      enabled: false
+    jaeger-grpc:
+      enabled: false
+    zipkin:
+      enabled: false
+    metrics:
+      enabled: false
+  networkPolicy:
+    enabled: true
+    allowIngressFrom:
+      - podSelector:
+          matchLabels:
+            app.kubernetes.io/part-of: skill2career
+  config:
+    receivers:
+      jaeger: null
+      prometheus: null
+      zipkin: null
+      otlp:
+        protocols:
+          grpc: null
+          http:
+            endpoint: ${env:MY_POD_IP}:4318
+    service:
+      telemetry:
+        metrics: null
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [debug]
+        metrics:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [debug]
+        logs:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [debug]

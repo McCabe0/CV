@@ -1,0 +1,58 @@
+name: Load test
+
+# The api under load with k6, on a stack of its own from a commit's pushed images: only the api and what
+# it needs, with docker-compose.perf.yml. Fails on failed or dropped requests; a p99 over the target warns.
+# See decisions/performance.md.
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: The images' tag, a commit hash.
+        required: true
+        type: string
+      profile:
+        description: empty for a fixed rate, or step, to look for the ceiling
+        required: false
+        type: string
+        default: ''
+
+jobs:
+  perf:
+    runs-on: ubuntu-latest
+    # A step run takes longer.
+    timeout-minutes: ${{ inputs.profile == 'step' && 25 || 15 }}
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      # The commit the images were built from, so the script and seed match them.
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: ./.github/actions/stack
+        with:
+          tag: ${{ inputs.tag }}
+          services: api toxiproxy
+          compose-files: docker-compose.perf.yml
+      - run: ./ci/perf.sh
+        env:
+          PERF_PROFILE: ${{ inputs.profile }}
+      # A p99 over the target warns, and fails nothing: see decisions/performance.md.
+      - name: Warn on a p99 over the target
+        if: ${{ !cancelled() && hashFiles('ci/perf-report/p99.json') != '' }}
+        run: |
+          read -r p99 target over < <(jq -r '"\(.p99) \(.target) \(.over)"' ci/perf-report/p99.json)
+          if [[ $over == true ]]; then
+            echo "::warning title=p99 over the target::p99 ${p99}ms against a target of ${target}ms"
+          fi
+      - name: Show the stack's logs
+        if: ${{ failure() }}
+        run: docker compose logs --no-color
+      - name: Upload the load test report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: perf-report
+          path: ci/perf-report/
+          retention-days: 7

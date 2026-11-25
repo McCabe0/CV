@@ -1,0 +1,66 @@
+name: CVE scan
+
+# Scans a commit's six images with grype: fails on a high or critical vulnerability with a fix, and lists
+# the ones with no fix in the summary. See decisions/cve.md.
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: The images' tag, a commit hash. This run's commit if left out.
+        required: false
+        type: string
+
+jobs:
+  cve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # Image names are lowercase, and the owner may not be.
+      - name: Name the images
+        env:
+          OWNER: ${{ github.repository_owner }}
+          TAG: ${{ inputs.tag || github.sha }}
+        run: |
+          echo "CVE_REGISTRY=ghcr.io/${OWNER,,}" >> "$GITHUB_ENV"
+          echo "CVE_TAG=$TAG" >> "$GITHUB_ENV"
+      - name: Pull the images
+        run: |
+          for service in api shell profile cv jobs admin; do
+            docker pull --quiet "$CVE_REGISTRY/cv-$service:$CVE_TAG"
+          done
+      - run: ./ci/cve.sh
+      - name: Show the results
+        if: ${{ !cancelled() }}
+        run: |
+          # The backticks are markdown, fencing each report, not a command.
+          # shellcheck disable=SC2016
+          for report in ci/cve-report/*.txt; do
+            printf '### %s\n\n```\n%s\n```\n\n' "$(basename "$report" .txt)" "$(cat "$report")" >> "$GITHUB_STEP_SUMMARY"
+          done
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        if: ${{ !cancelled() }}
+        with:
+          node-version-file: cv-ui/.nvmrc
+      # Fails nothing: these have no fix to apply, but should be seen.
+      - name: Show the high and critical ones with no fix
+        if: ${{ !cancelled() }}
+        run: |
+          printf '### high and critical, with no fix\n\n' >> "$GITHUB_STEP_SUMMARY"
+          node ci/cve/unfixed.mjs ci/cve-report >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload the reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: cve-report
+          path: ci/cve-report/
+          retention-days: 7

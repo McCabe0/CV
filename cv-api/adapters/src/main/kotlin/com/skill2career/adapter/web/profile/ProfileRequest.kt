@@ -85,8 +85,11 @@ data class ProfileRequest(
     val linkedin: String? = null,
     @field:Pattern(regexp = WEB_URL) @field:Size(max = 300)
     val portfolio: String? = null,
-    @field:Valid @field:Size(max = 30)
-    val workHistory: List<WorkExperienceRequest> = emptyList(),
+    @field:Size(max = 30)
+    val workHistory: List<
+        @Valid
+        WorkExperienceRequest,
+    > = emptyList(),
 ) {
     fun toProfile(ownerId: OwnerId): Profile =
         Profile(

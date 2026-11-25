@@ -3,6 +3,8 @@ package com.skill2career.adapter.messaging
 import com.skill2career.application.cv.AdvanceCvRequest
 import com.skill2career.application.cv.CvRequestNotFound
 import com.skill2career.application.cv.GiveUpOnCvRequest
+import com.skill2career.domain.cv.CvRequest
+import com.skill2career.domain.cv.CvStatus
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
@@ -53,14 +55,40 @@ class CvWorkListener(
     fun onWork(payload: String) {
         val message = RequestMessage.read(payload)
         if (processed.existsById(message.eventId)) return
-        try {
-            advance.advance(message.requestId)
-        } catch (failure: Exception) {
-            log.warn("CV request {} could not be advanced, it will be retried: {}", message.requestId, failure.message)
-            throw failure
-        }
+        val request =
+            try {
+                advance.advance(message.requestId)
+            } catch (failure: Exception) {
+                log.warn("CV request {} could not be advanced, it will be retried: {}", message.requestId, failure.message)
+                throw failure
+            }
         processed.save(ProcessedEventEntity(message.eventId))
+        log.info("CV request {} is {}{}", message.requestId, request.status, progress(request))
     }
+
+    /** How far the agents got: the questions waiting for answers, or the rounds and the last score. */
+    private fun progress(request: CvRequest): String {
+        val last = request.rounds.lastOrNull()
+        return when {
+            request.status == CvStatus.AWAITING_ANSWERS -> {
+                ", with ${counted(request.questions.size, "question")}"
+            }
+
+            last != null -> {
+                ", after ${counted(request.rounds.size, "round")}, the last scored ${last.review.score}, " +
+                    if (last.review.approvedByCritic) "approved" else "not approved"
+            }
+
+            else -> {
+                ""
+            }
+        }
+    }
+
+    private fun counted(
+        count: Int,
+        thing: String,
+    ) = if (count == 1) "1 $thing" else "$count ${thing}s"
 
     /** Every try failed: the request fails too, with a reason the candidate can act on. */
     @DltHandler

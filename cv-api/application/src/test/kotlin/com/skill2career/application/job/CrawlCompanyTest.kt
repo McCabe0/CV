@@ -1,6 +1,9 @@
 package com.skill2career.application.job
 
+import com.skill2career.domain.job.CrawlOutcome
+import com.skill2career.domain.job.CrawlResult
 import com.skill2career.domain.job.JobFixtures.COMPANY
+import com.skill2career.domain.job.JobFixtures.job
 import com.skill2career.domain.job.JobFixtures.posting
 import com.skill2career.domain.job.SourceType
 import org.assertj.core.api.Assertions.assertThat
@@ -16,7 +19,30 @@ class CrawlCompanyTest {
     private val jobs = InMemoryJobStore()
     private val greenhouse = FakeJobSource(SourceType.GREENHOUSE)
     private val lever = FakeJobSource(SourceType.LEVER)
-    private val crawl = CrawlCompany(companies, listOf(greenhouse, lever), jobs, Clock.fixed(now, ZoneOffset.UTC))
+    private val results = InMemoryCrawlResults()
+    private val crawl = CrawlCompany(companies, listOf(greenhouse, lever), jobs, results, Clock.fixed(now, ZoneOffset.UTC))
+
+    @Test
+    fun `records what the crawl found, added and closed, for the admin zone`() {
+        jobs.saveAll(listOf(job(posting = posting("1"))))
+        greenhouse.lists(COMPANY, posting("2"), posting("3"))
+
+        crawl.crawl(COMPANY.id!!)
+
+        assertThat(results.latest()[COMPANY.id]).isEqualTo(CrawlResult(COMPANY.id!!, now, CrawlOutcome.WORKED, 2, 2, 1))
+    }
+
+    @Test
+    fun `skips a company no longer tracked, so a crawl queued before cannot bring its jobs back`() {
+        companies.save(COMPANY.untracked(now))
+        greenhouse.lists(COMPANY, posting("1"))
+
+        crawl.crawl(COMPANY.id!!)
+
+        assertThat(greenhouse.fetched).isEmpty()
+        assertThat(jobs.forCompany(COMPANY.id!!)).isEmpty()
+        assertThat(results.latest()).isEmpty()
+    }
 
     @Test
     fun `saves what the company's own board lists`() {

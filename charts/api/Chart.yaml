@@ -1,0 +1,9 @@
+apiVersion: v2
+name: api
+description: The api's image in one of its roles, api, cv-worker or job-worker, which differ only by APP_ROLES. The umbrella chart installs it once for each, so each scales on its own. Its database, kafka, keycloak and the collector are found from values. See decisions/deploy.md.
+type: application
+version: 0.1.0
+dependencies:
+  - name: common
+    version: 0.1.0
+    repository: file://../common

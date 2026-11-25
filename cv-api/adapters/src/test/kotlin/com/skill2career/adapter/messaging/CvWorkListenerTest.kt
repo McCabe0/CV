@@ -6,7 +6,13 @@ import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
 import com.skill2career.application.cv.AdvanceCvRequest
 import com.skill2career.application.cv.GiveUpOnCvRequest
+import com.skill2career.domain.cv.CvFixtures.awaitingAnswers
+import com.skill2career.domain.cv.CvFixtures.cv
+import com.skill2career.domain.cv.CvFixtures.question
+import com.skill2career.domain.cv.CvFixtures.rejected
+import com.skill2career.domain.cv.CvFixtures.review
 import com.skill2career.domain.cv.CvFixtures.writing
+import com.skill2career.domain.cv.Round
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.AfterEach
@@ -50,6 +56,32 @@ class CvWorkListenerTest {
 
         verify(advance).advance(42)
         verify(processed).save(any<ProcessedEventEntity>())
+    }
+
+    @Test
+    fun `logs that the request is waiting for answers, and to how many questions`() {
+        whenever(advance.advance(42)) doReturn awaitingAnswers(question(1), question(2, "Which cloud?"))
+
+        listener.onWork(message)
+
+        val info = logged.list.single()
+        assertThat(info.level).isEqualTo(Level.INFO)
+        assertThat(info.formattedMessage).contains("CV request 42", "AWAITING_ANSWERS", "2 questions")
+    }
+
+    @Test
+    fun `logs that the request is written, with its rounds and the last score, so a slow CV can be followed`() {
+        val written =
+            writing()
+                .withRound(Round(1, cv(), rejected(score = 70)))
+                .withRound(Round(2, cv(), review(score = 92)))
+                .completed()
+        whenever(advance.advance(42)) doReturn written
+
+        listener.onWork(message)
+
+        assertThat(logged.list.single().formattedMessage)
+            .contains("CV request 42", "COMPLETED", "2 rounds", "last scored 92", "approved")
     }
 
     @Test

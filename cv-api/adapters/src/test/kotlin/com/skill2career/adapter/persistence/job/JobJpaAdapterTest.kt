@@ -25,6 +25,21 @@ class JobJpaAdapterTest : PostgresTest() {
     private val gitlab: TrackedCompany by lazy { companies.all().single { it.name == "GitLab" } }
 
     @Test
+    fun `counts each company's live jobs, leaving out closed ones and companies with none`() {
+        val closed = Instant.parse("2026-11-23T06:00:00Z")
+        adapter.saveAll(
+            listOf(
+                job(company = monzo, posting = posting("1")),
+                job(company = monzo, posting = posting("2")),
+                job(company = monzo, posting = posting("3"), inactiveSince = closed),
+                job(company = gitlab, posting = posting("1"), inactiveSince = closed),
+            ),
+        )
+
+        assertThat(adapter.liveCounts()).isEqualTo(mapOf(monzo.id!! to 2))
+    }
+
+    @Test
     fun `saves new jobs, giving each an id`() {
         adapter.saveAll(listOf(job(company = monzo, posting = posting("1")), job(company = monzo, posting = posting("2"))))
 

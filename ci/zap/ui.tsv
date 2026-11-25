@@ -1,0 +1,7 @@
+# OWASP ZAP rules for the ui's baseline scans. A rule not listed here warns, and any warning fails the scan.
+# Each accepted rule says why. Format: rule id, IGNORE / INFO / WARN / FAIL, then the reason, tab separated.
+# * with OUTOFSCOPE and a url regex leaves those urls out of the scan. See decisions/zap.md.
+*	OUTOFSCOPE	.*/auth/logout.*
+10049	IGNORE	(Non-Storable and Storable Content: informational. Signed in pages are no-store on purpose, as they hold personal data, and next's hashed static files are cached for a year on purpose)
+10031	IGNORE	(User Controllable HTML Element Attribute: informational. The values are next's own hidden server action fields, and the jobs filter and admin form showing back what was entered, all escaped by react; no input is reflected unescaped)
+10202	IGNORE	(Absence of Anti-CSRF Tokens: next refuses a server action whose Origin does not match the host, and /auth/logout, the one form that is a route handler, refuses the same itself (handlers.test.ts); the session cookie is also SameSite=Lax and httpOnly)

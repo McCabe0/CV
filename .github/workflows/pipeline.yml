@@ -1,6 +1,6 @@
 name: Pipeline
 
-# Every push to main. Cve, perf, observability and the deploy test join slice by slice.
+# Every push to main. The deploy test only when the charts change, as it is slow; it runs nightly too.
 # See decisions/workflow.md.
 on:
   push:
@@ -21,6 +21,29 @@ jobs:
   validate-ui:
     uses: ./.github/workflows/_validate-ui.yml
 
+  # Whether this push changed the charts or the deploy test, for the deploy test.
+  charts:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.diff.outputs.changed }}
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+      # A commit before that is not here, such as a push of a new branch, counts as a change.
+      - name: Find what changed
+        id: diff
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if git cat-file -e "$BEFORE^{commit}" 2>/dev/null &&
+            git diff --quiet "$BEFORE" HEAD -- charts deploy-test .github/workflows/_deploy-test.yml; then
+            echo changed=false >> "$GITHUB_OUTPUT"
+          else
+            echo changed=true >> "$GITHUB_OUTPUT"
+          fi
+
   images:
     name: image ${{ matrix.image }}
     strategy:
@@ -40,6 +63,9 @@ jobs:
           - image: cv-jobs
             context: cv-ui
             app: jobs
+          - image: cv-admin
+            context: cv-ui
+            app: admin
     permissions:
       contents: read
       packages: write
@@ -49,6 +75,70 @@ jobs:
       context: ${{ matrix.context }}
       build-args: APP=${{ matrix.app }}
 
+  # On the images just pushed, not built again: playwright, then ZAP's passive scans of the ui. ZAP's
+  # attacks on the api run nightly (nightly.yml).
   smoke:
-    needs: [validate-api, validate-ui]
+    needs: [validate-api, validate-ui, images]
+    permissions:
+      contents: read
+      packages: read
     uses: ./.github/workflows/_smoke.yml
+
+  # The images that were pushed, as shipped: os packages, jars and node modules in one scan.
+  cve:
+    needs: images
+    permissions:
+      contents: read
+      packages: read
+    uses: ./.github/workflows/_cve.yml
+
+  # The charts on a kind cluster with the images just pushed, and the playwright journeys through its
+  # gateway. Only when the charts or the test change; nightly.yml runs it every night.
+  deploy-test:
+    needs: [charts, images]
+    if: ${{ needs.charts.outputs.changed == 'true' }}
+    permissions:
+      contents: read
+      packages: read
+    uses: ./.github/workflows/_deploy-test.yml
+
+  # Nothing deploys yet, so a commit that passed everything stands in for a deployment to production,
+  # for DORA: a github deployment to the environment `main`, carrying its events, each commit since the
+  # last one with its lead time, for loading into loki when there is somewhere to deploy. A deploy test
+  # that was skipped, as the charts did not change, does not hold it back. See decisions/dora.md.
+  record:
+    needs: [smoke, cve, deploy-test]
+    if: >-
+      ${{ !cancelled() && needs.smoke.result == 'success' && needs.cve.result == 'success'
+      && contains(fromJSON('["success", "skipped"]'), needs.deploy-test.result) }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: cv-ui/.nvmrc
+      - name: Record the deployment
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          # The last commit recorded, which is what this one replaces, and when this run started.
+          running=$(gh api "repos/$REPO/deployments?environment=main&per_page=1" --jq '.[0].sha // "unknown"')
+          started=$(gh api "repos/$REPO/actions/runs/$RUN_ID" --jq .run_started_at)
+          node ci/dora/deployment-event.mjs --environment main --version "$GITHUB_SHA" \
+            --running "$running" --started "$started" --out "$RUNNER_TEMP/events.json"
+          id=$(jq -n --arg sha "$GITHUB_SHA" --slurpfile events "$RUNNER_TEMP/events.json" \
+            '{ref: $sha, environment: "main", auto_merge: false, required_contexts: [],
+              description: "passed every check", payload: $events[0]}' |
+            gh api "repos/$REPO/deployments" --input - --jq .id)
+          gh api "repos/$REPO/deployments/$id/statuses" -f state=success -f log_url="$RUN" > /dev/null
+          echo "Recorded ${GITHUB_SHA:0:7}, replacing ${running:0:7}"

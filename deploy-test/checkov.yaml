@@ -1,0 +1,12 @@
+# The policy scan of the rendered charts, run by run.sh. Accepted checks, each with its reason, as in
+# ci/cve/grype.yaml. See decisions/deploy.md.
+framework:
+  - kubernetes
+compact: true
+quiet: true
+skip-check:
+  # Secrets as files: spring and next read their settings from the environment, and the secrets come from
+  # the platform's store into kubernetes secrets either way. Files would mean code to read them.
+  - CKV_K8S_35
+  # Always pulling: every image is by digest, which cannot change, so pulling again gets the same image.
+  - CKV_K8S_15

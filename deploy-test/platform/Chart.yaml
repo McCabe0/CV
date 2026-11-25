@@ -1,0 +1,5 @@
+apiVersion: v2
+name: platform
+description: For the deploy test only. What a cloud and the organisation would give the service, stood in for on kind - postgres, kafka, keycloak with the test realm, the gateway, plain secrets in place of the secret store's, and wiremock playing the LLM and the job boards. Not part of what ships. See decisions/deploy.md.
+type: application
+version: 0.1.0

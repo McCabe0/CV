@@ -30,9 +30,11 @@ The first ui is one vite page with no tests. It is rebuilt, as the digital-resol
   are covered by the jest tests, which stub the client. The stand ins are what lies outside: the LLM and
   the job boards. docker-compose.e2e.yml points the cv-worker at wiremock playing gemini
   (cv-ui/e2e/wiremock), so the journeys cost nothing, need no key, and get the same interview, draft,
-  review and fit summary every run. It points the job-worker at wiremock playing all four boards
-  (cv-ui/e2e/boards), and has it crawl five seconds after it starts rather than a minute, so the jobs
-  journey sees the same few jobs every run without waiting for the real boards or depending on them.
+  review and fit summary every run. It points the job-worker, and the api (which reads a board when an
+  admin adds its company), at wiremock playing all four boards (cv-ui/e2e/boards), and has the
+  job-worker crawl five seconds after it starts rather than a minute, so the jobs journey sees the same
+  few jobs every run without waiting for the real boards or depending on them. The admin journey adds
+  a company on a played board of its own each run (`played-...`), as the runs share one database.
   The crawl is once a day, so the journeys need a stack that has not crawled today: CI's always is, and
   locally a separate project (`docker compose -p cv-e2e ...`) keeps them apart from the dev stack's data.
 - 90% line and branch coverage.

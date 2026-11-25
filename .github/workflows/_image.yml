@@ -29,6 +29,11 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      # Image names are lowercase, and the owner (McCabe0) is not.
+      - name: Name the image
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: echo "REGISTRY=ghcr.io/${OWNER,,}" >> "$GITHUB_ENV"
       - name: Build and push image
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
@@ -37,7 +42,7 @@ jobs:
             GIT_SHA=${{ github.sha }}
             ${{ inputs.build-args }}
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/${{ inputs.image }}:${{ github.sha }}
+          tags: ${{ env.REGISTRY }}/${{ inputs.image }}:${{ github.sha }}
           labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
           cache-from: type=gha,scope=${{ inputs.image }}
           cache-to: type=gha,scope=${{ inputs.image }},mode=max

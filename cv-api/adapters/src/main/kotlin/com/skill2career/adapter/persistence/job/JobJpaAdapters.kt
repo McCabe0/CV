@@ -17,6 +17,7 @@ import jakarta.persistence.PrePersist
 import jakarta.persistence.PreUpdate
 import jakarta.persistence.Table
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Query
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
@@ -31,13 +32,24 @@ class TrackedCompanyEntity(
     @Enumerated(EnumType.STRING)
     var source: SourceType,
     var boardToken: String,
+    var untrackedAt: Instant? = null,
 ) {
-    fun toDomain() = TrackedCompany(id, name, source, boardToken)
+    fun toDomain() = TrackedCompany(id, name, source, boardToken, untrackedAt)
+
+    companion object {
+        fun of(company: TrackedCompany) =
+            TrackedCompanyEntity(company.id, company.name, company.source, company.boardToken, company.untrackedAt)
+    }
 }
 
-interface TrackedCompanyJpaRepo : JpaRepository<TrackedCompanyEntity, Long>
+interface TrackedCompanyJpaRepo : JpaRepository<TrackedCompanyEntity, Long> {
+    fun findBySourceAndBoardToken(
+        source: SourceType,
+        boardToken: String,
+    ): TrackedCompanyEntity?
+}
 
-/** The [TrackedCompanyStore] port, on postgres. Read only until the admin zone, in slice 6. */
+/** The [TrackedCompanyStore] port, on postgres. One board is tracked once: a second is refused. */
 @Repository
 @Transactional(readOnly = true)
 class TrackedCompanyJpaAdapter(
@@ -46,6 +58,15 @@ class TrackedCompanyJpaAdapter(
     override fun all(): List<TrackedCompany> = repo.findAll().sortedBy { it.id }.map { it.toDomain() }
 
     override fun find(id: Long): TrackedCompany? = repo.findById(id).map { it.toDomain() }.orElse(null)
+
+    override fun findByBoard(
+        source: SourceType,
+        boardToken: String,
+    ): TrackedCompany? = repo.findBySourceAndBoardToken(source, boardToken)?.toDomain()
+
+    /** Flushed at once, so a board already tracked fails here, not later at commit. */
+    @Transactional
+    override fun save(company: TrackedCompany): TrackedCompany = repo.saveAndFlush(TrackedCompanyEntity.of(company)).toDomain()
 }
 
 /** The table's shape. The domain never sees it: [toDomain] and [of] translate. */
@@ -103,8 +124,17 @@ class JobEntity(
     }
 }
 
+/** How many live jobs one company has. */
+interface LiveCount {
+    val companyId: Long
+    val jobs: Long
+}
+
 interface JobJpaRepo : JpaRepository<JobEntity, Long> {
     fun findByCompanyId(companyId: Long): List<JobEntity>
+
+    @Query("SELECT j.companyId AS companyId, count(j) AS jobs FROM JobEntity j WHERE j.inactiveSince IS NULL GROUP BY j.companyId")
+    fun liveCounts(): List<LiveCount>
 }
 
 /** The [JobStore] port, on postgres. A crawl's changes are saved in one transaction: all, or none. */
@@ -122,4 +152,7 @@ class JobJpaAdapter(
     override fun saveAll(jobs: List<Job>) {
         repo.saveAll(jobs.map(JobEntity::of))
     }
+
+    @Transactional(readOnly = true)
+    override fun liveCounts(): Map<Long, Int> = repo.liveCounts().associate { it.companyId to it.jobs.toInt() }
 }
