@@ -44,10 +44,23 @@ the password `test`.
 | keycloak admin               | http://localhost:8180 (admin / admin)     |
 | kafka ui: topics, lag, dlq   | http://localhost:8090                     |
 | grafana: metrics, logs       | http://localhost:3300                     |
+| DORA dashboard               | http://localhost:3300/d/dora              |
 | jaeger: traces               | http://localhost:16686                    |
 
 The database keeps its data in the `pgdata` volume across `docker compose down`. To start it empty,
 use `docker compose down --volumes`.
+
+## DORA
+
+The four DORA metrics, live, on grafana's DORA dashboard. Nothing deploys yet, so the local stack stands
+in for production, as the environment `local`, and `local/deploy.sh` deploys to it: it builds the
+commit's images, starts them, and records the deployment with each commit's lead time. Grafana's alerts on
+the api's errors and latency count as change failures. In ci, a commit on main that passes every check is
+recorded as a github deployment to `main`. See `decisions/dora.md`.
+
+```bash
+bash local/deploy.sh          # in place of docker compose up, to count as a deployment
+```
 
 ## Test it
 

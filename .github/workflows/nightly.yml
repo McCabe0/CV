@@ -2,9 +2,9 @@ name: Nightly
 
 # The slow checks that rarely fail, kept off every push so the pipeline stays quick, on the newest full
 # set of images each morning, or by hand: the CVE scan, as new vulnerabilities appear with no push, and
-# ZAP's attack scan of the api, the k6 load test, and the deploy test of the helm charts. Keeps one
-# issue open while any fails, closing it when all pass. See decisions/workflow.md, cve.md, zap.md,
-# performance.md and deploy.md.
+# ZAP's attack scan of the api, the k6 load test, the deploy test of the helm charts, and the DORA
+# dashboard's figures. Keeps one issue open while any fails, closing it when all pass. See
+# decisions/workflow.md, cve.md, zap.md, performance.md, deploy.md and dora.md.
 on:
   schedule:
     - cron: '0 6 * * *'
@@ -87,8 +87,36 @@ jobs:
     with:
       tag: ${{ needs.newest.outputs.tag }}
 
+  # The DORA dashboard's figures, from events it is sent, and one real failure: it stops the database. On
+  # a stack of its own, with the observability services.
+  dora:
+    needs: newest
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The test deploys the last five commits.
+          fetch-depth: 0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: cv-ui/.nvmrc
+      - uses: ./.github/actions/stack
+        with:
+          tag: ${{ needs.newest.outputs.tag }}
+          services: api grafana
+      - run: node --test ci/dora/dashboard.test.mjs
+        timeout-minutes: 15
+      - name: Show the stack's logs
+        if: ${{ failure() }}
+        run: docker compose logs --no-color
+
   report:
-    needs: [newest, cve, zap, perf, deploy-test]
+    needs: [newest, cve, zap, perf, deploy-test, dora]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     permissions:
@@ -104,12 +132,13 @@ jobs:
           ZAP: ${{ needs.zap.result }}
           PERF: ${{ needs.perf.result }}
           DEPLOY: ${{ needs.deploy-test.result }}
+          DORA: ${{ needs.dora.result }}
           RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           title='Nightly checks failed'
-          results="finding the images: $NEWEST, cve: $CVE, zap: $ZAP, perf: $PERF, deploy test: $DEPLOY"
+          results="finding the images: $NEWEST, cve: $CVE, zap: $ZAP, perf: $PERF, deploy test: $DEPLOY, dora: $DORA"
           issue=$(gh issue list --state open --search "in:title \"$title\"" --json number --jq '.[0].number // empty')
-          if [[ $NEWEST == success && $CVE == success && $ZAP == success && $PERF == success && $DEPLOY == success ]]; then
+          if [[ $NEWEST == success && $CVE == success && $ZAP == success && $PERF == success && $DEPLOY == success && $DORA == success ]]; then
             if [[ -n $issue ]]; then gh issue close "$issue" --comment "Passing again: $RUN"; fi
           elif [[ -n $issue ]]; then
             gh issue comment "$issue" --body "Still failing ($results): $RUN"

@@ -4,14 +4,14 @@ GitHub Actions, as the digital-resolutions-poc. Built up a slice at a time.
 | workflow | when | does |
 |---|---|---|
 | `pull-request.yml` | every pull request | validate-api, validate-ui and the images, for what the change touches |
-| `pipeline.yml` | push to main | images, then smoke (with ZAP's ui scans) and cve, and the deploy test when the charts change |
+| `pipeline.yml` | push to main | images, then smoke (with ZAP's ui scans) and cve, and the deploy test when the charts change, then `record`: a github deployment to `main` for DORA (dora.md) |
 | `_validate-api.yml` | called | `./gradlew check`: ktlint, unit and integration tests, 90% coverage |
 | `_validate-ui.yml` | called | prettier, eslint, typecheck, jest with 90% coverage |
 | `_image.yml` | called | builds an image, pushes it to ghcr tagged with the commit |
 | `_smoke.yml` | called | playwright against the compose stack, then ZAP's passive scans of the ui (zap.md) |
 | `_zap.yml` | called | OWASP ZAP, all three scans, attacks on the api included, on a stack of its own |
 | `_cve.yml` | called | grype on every image: fails on high or critical with a fix (cve.md) |
-| `nightly.yml` | daily, or by hand | `_cve.yml`, `_zap.yml`, k6 and the deploy test on the newest images, keeping one issue open while any fails |
+| `nightly.yml` | daily, or by hand | `_cve.yml`, `_zap.yml`, k6, the deploy test and the DORA dashboard's test on the newest images, keeping one issue open while any fails |
 | `_perf.yml` | called | k6 on the api at a fixed rate: fails on errors, warns on a p99 over target (performance.md) |
 | `perf-ceiling.yml` | by hand | `_perf.yml` stepping the rate up, to find the ceiling |
 | `_deploy-test.yml` | called | the helm charts linted, policy scanned and installed on kind, then playwright through its gateway (deploy.md) |

@@ -1,0 +1,120 @@
+# The alerts that say a deployment hurt the environment, and where they go: to the collector, as otlp
+# log events that the DORA dashboard counts. On the local stack, so they fire within a minute or two;
+# production has its own timings, and pages someone too. See decisions/dora.md.
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: dora
+    receivers:
+      - uid: dora
+        type: webhook
+        settings:
+          url: http://collector:4318/v1/logs
+          httpMethod: POST
+          # $$ is a $ to grafana, which reads $name in these files as an environment variable.
+          # One otlp log event per alert: a change failure when it fires, against the version that was
+          # running, and a restore, with how long it took, when it resolves. The same shape as
+          # ci/dora/deployment-event.mjs sends for a rollback.
+          payload:
+            template: |
+              {"resourceLogs": [{{ range $$i, $$alert := .Alerts }}{{ if $$i }}, {{ end }}{
+                "resource": {"attributes": [
+                  {"key": "service.name", "value": {"stringValue": "skill2career"}},
+                  {"key": "deployment.environment.name", "value": {"stringValue": "{{ $$alert.Labels.environment }}"}}
+                ]},
+                "scopeLogs": [{"scope": {"name": "alert"}, "logRecords": [{{ if eq $$alert.Status "firing" }}{
+                  "timeUnixNano": "{{ $$alert.StartsAt.UnixNano }}",
+                  "severityText": "ERROR",
+                  "body": {"stringValue": "{{ slice $$alert.Labels.service_version 0 7 }} failed: {{ $$alert.Labels.alertname }}"},
+                  "attributes": [
+                    {"key": "event.name", "value": {"stringValue": "change.failure"}},
+                    {"key": "failed_version", "value": {"stringValue": "{{ $$alert.Labels.service_version }}"}},
+                    {"key": "reason", "value": {"stringValue": "{{ $$alert.Labels.alertname }}"}}
+                  ]
+                }{{ else }}{
+                  "timeUnixNano": "{{ $$alert.EndsAt.UnixNano }}",
+                  "severityText": "INFO",
+                  "body": {"stringValue": "{{ slice $$alert.Labels.service_version 0 7 }} restored after {{ printf "%.0f" ($$alert.EndsAt.Sub $$alert.StartsAt).Minutes }} minutes"},
+                  "attributes": [
+                    {"key": "event.name", "value": {"stringValue": "restore"}},
+                    {"key": "version", "value": {"stringValue": "{{ $$alert.Labels.service_version }}"}},
+                    {"key": "reason", "value": {"stringValue": "{{ $$alert.Labels.alertname }}"}},
+                    {"key": "restore_seconds", "value": {"intValue": "{{ printf "%.0f" ($$alert.EndsAt.Sub $$alert.StartsAt).Seconds }}"}}
+                  ]
+                }{{ end }}]}]
+              }{{ end }}]}
+
+# Each alert on its own, at once, so every firing and every resolving is an event. Locally this is the
+# only policy. In production DORA's would be a route beside on call's, with continue, so both get it.
+policies:
+  - orgId: 1
+    receiver: dora
+    group_by: ['...']
+    group_wait: 0s
+    group_interval: 10s
+    repeat_interval: 4h
+
+groups:
+  - orgId: 1
+    name: dora
+    folder: DORA alerts
+    interval: 10s
+    rules:
+      - uid: api-errors
+        title: API errors
+        condition: C
+        # Locally, a minute of it. A single bad request is not a failure.
+        for: 1m
+        labels:
+          environment: local
+        annotations:
+          summary: More than 5% of the api's requests failed with a 5xx, for the version running.
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            relativeTimeRange: {from: 120, to: 0}
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              expr: >-
+                sum by (service_version) (rate(http_server_requests_milliseconds_count{service_name="cv-api", status=~"5.."}[1m]))
+                / sum by (service_version) (rate(http_server_requests_milliseconds_count{service_name="cv-api"}[1m]))
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: {type: gt, params: [0.05]}
+      - uid: api-latency
+        title: API latency
+        condition: C
+        # Five minutes of it, so a cold start or one slow call is not a failure.
+        for: 5m
+        labels:
+          environment: local
+        annotations:
+          summary: The api's p99 was over 200ms, the bar the load test holds it to, for the version running.
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              expr: >-
+                histogram_quantile(0.99, sum by (le, service_version) (rate(http_server_requests_milliseconds_bucket{service_name="cv-api"}[5m])))
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: {type: gt, params: [200]}
