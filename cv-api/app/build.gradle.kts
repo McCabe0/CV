@@ -6,7 +6,6 @@ plugins {
     kotlin("plugin.spring")
     id("org.springframework.boot")
     id("io.spring.dependency-management")
-    id("info.solidsoft.pitest")
 }
 
 dependencies {
@@ -32,17 +31,6 @@ dependencies {
     testImplementation("org.testcontainers:testcontainers-kafka")
     // Plays gemini in the cv pipeline test.
     testImplementation("org.wiremock:wiremock-standalone:3.13.2")
-}
-
-// Mutation testing, weekly and report only. Not part of check. See decisions/workflow.md.
-pitest {
-    pitestVersion.set("1.30.2")
-    junit5PluginVersion.set("1.2.3")
-    targetClasses.set(setOf("com.skill2career.*"))
-    avoidCallsTo.set(setOf("kotlin.jvm.internal", "kotlin.ResultKt"))
-    excludedMethods.set(setOf("equals", "hashCode", "toString", "copy", "component*"))
-    outputFormats.set(setOf("HTML", "XML"))
-    timestampedReports.set(false)
 }
 
 tasks.getByName<BootJar>("bootJar") {
