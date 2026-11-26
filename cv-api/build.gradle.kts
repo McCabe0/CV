@@ -23,6 +23,12 @@ repositories {
 subprojects {
     group = "com.skill2career"
 
+    // Spring boot 4.1.2 brings tomcat 11.0.27, which has two critical and six high vulnerabilities fixed
+    // in 11.0.29: CVE-2026-116561, -118028, -118233, -116600, -116830, -118436, -117517 and -106012. Set
+    // here so both modules that import boot's bom, adapters and app, take it. Goes once boot brings
+    // 11.0.29 or later. See decisions/cve.md.
+    extra["tomcat.version"] = "11.0.29"
+
     apply(plugin = "org.jetbrains.kotlin.jvm")
     apply(plugin = "org.jlleitschuh.gradle.ktlint")
     apply(plugin = "jacoco")

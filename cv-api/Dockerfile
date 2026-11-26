@@ -17,9 +17,9 @@ RUN --mount=type=cache,target=/root/.gradle ./gradlew :app:bootJar -Dorg.gradle.
 
 FROM eclipse-temurin:25-jre-alpine@sha256:69c2a26e9894016e274c880fa542956d005b3755f84db765145185e87405bd89
 
-# Fixed in alpine, not yet in the base image: CVE-2026-4738 (zlib, critical). Goes once dependabot moves
-# the base image to one that has it.
-RUN apk upgrade --no-cache zlib
+# Fixed in alpine, not yet in the base image: CVE-2026-4738 (zlib, critical), and CVE-2026-124317,
+# -134703 and -128241 (libexpat, medium). Goes once dependabot moves the base image to one that has them.
+RUN apk upgrade --no-cache zlib libexpat
 
 RUN addgroup --gid 2000 --system appgroup && \
     adduser --uid 2000 --system appuser -G appgroup
