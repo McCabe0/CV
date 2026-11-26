@@ -28,7 +28,7 @@ services:
       DATASOURCE_URL: jdbc:postgresql://toxiproxy:5432/skill2career
 
   perf:
-    image: grafana/k6:2.3.0
+    image: grafana/k6:2.4.0
     profiles: [perf]
     depends_on:
       api:
