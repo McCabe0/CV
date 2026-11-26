@@ -1,4 +1,10 @@
 # Accepted vulnerabilities, each with its reason and the date to look again. Only for ones with no fix,
 # or a fix that does not apply: one with a fix is fixed. See decisions/cve.md.
 # - vulnerability: CVE-2026-0000  # why it does not apply, or why it can wait, and until when
-ignore: []
+ignore:
+  # Critical, fixed in tomcat 11.0.30, which is not on maven central yet: 11.0.29 is the newest, set in
+  # cv-api/build.gradle.kts. Only for 11.0.29, so it lapses once tomcat moves. Look again 2026-12-03.
+  - vulnerability: CVE-2026-133325
+    package:
+      name: tomcat-embed-core
+      version: 11.0.29

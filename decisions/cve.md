@@ -50,6 +50,11 @@ The first scan, 2026-11-24, found high and critical vulnerabilities with a fix i
 
 Five openssl highs have no fix yet. They fail nothing, and the job's summary lists them.
 
+2026-11-26: spring boot 4.1.2 brings tomcat 11.0.27, with two critical and six high vulnerabilities fixed
+in 11.0.29. Boot's `tomcat.version` is set to 11.0.29 in `cv-api/build.gradle.kts` until boot brings it.
+11.0.29 then has its own critical, CVE-2026-133325, fixed in 11.0.30, which is not on maven central yet,
+so `ci/cve/grype.yaml` accepts it for 11.0.29 only, to look at again on 2026-12-03.
+
 ## costs
 - a new vulnerability can fail a push that has nothing to do with it. That is correct, but it will happen.
 - base images get no patches unless a dependabot PR is merged, so those PRs need keeping up with.
