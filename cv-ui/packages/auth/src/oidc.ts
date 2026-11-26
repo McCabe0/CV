@@ -60,7 +60,8 @@ export async function beginLogin(config: AuthConfig): Promise<LoginState & { url
 
 const nowSeconds = () => Math.floor(Date.now() / 1000)
 
-type Tokens = Awaited<ReturnType<typeof client.authorizationCodeGrant>>
+// What the code and refresh grants both return. Since openid-client 6.9 each brands its result differently.
+type Tokens = client.TokenEndpointResponse & client.TokenEndpointResponseHelpers
 
 const sessionFrom = (tokens: Tokens, refreshToken: string | undefined): Session => {
   if (!refreshToken) throw new Error('Keycloak did not return a refresh token')
