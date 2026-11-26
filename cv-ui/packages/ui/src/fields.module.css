@@ -16,14 +16,16 @@
 
 .label {
   display: block;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.35rem;
   padding: 0;
   font-weight: 600;
+  font-size: 0.95rem;
 }
 
 .hint {
-  margin: 0 0 0.25rem;
+  margin: 0 0 0.35rem;
   color: var(--color-muted);
+  font-size: 0.9rem;
 }
 
 .error {
@@ -38,11 +40,23 @@
   box-sizing: border-box;
   width: 100%;
   min-height: var(--target-size);
-  padding: 0.4rem 0.5rem;
-  border: 2px solid var(--color-text);
-  border-radius: 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius);
   background: var(--color-surface);
   color: var(--color-text);
+  transition: border-color 120ms ease;
+}
+
+.input:hover,
+.select:hover {
+  border-color: var(--color-text);
+}
+
+.input:focus-visible,
+.select:focus-visible {
+  border-color: var(--color-focus);
+  outline-offset: 0;
 }
 
 .invalid .input,

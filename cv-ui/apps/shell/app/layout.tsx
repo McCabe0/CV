@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
+import { areasFor } from '@cv/auth'
 import { getSession } from '@cv/auth/server'
 import { AppLayout } from '@cv/ui'
 import '@cv/ui/styles.css'
@@ -14,7 +15,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   return (
     <html lang="en-GB">
       <body>
-        <AppLayout area="Home" user={user}>
+        <AppLayout current="/" areas={user ? areasFor(user) : []} user={user}>
           {children}
         </AppLayout>
       </body>

@@ -1,4 +1,5 @@
-import { hasRole, type User } from '@cv/auth'
+import { hasRole } from './roles'
+import type { User } from './session'
 
 export type Area = { name: string; href: string }
 
