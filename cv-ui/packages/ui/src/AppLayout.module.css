@@ -77,7 +77,7 @@
   font-size: 0.9rem;
 }
 
-.signOut:hover {
+.signOut:hover:not(:disabled) {
   background: var(--color-background);
 }
 
