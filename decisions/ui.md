@@ -14,6 +14,9 @@ The first ui is one vite page with no tests. It is rebuilt, as the digital-resol
 | `jobs` | matched jobs, each linking to the company's own page |
 | `admin` | tracked companies and crawl health. ADMIN role only |
 
+- every zone's header carries the main navigation: Home, then the areas the user's roles allow
+  (`areasFor`, in `@cv/auth`), with the zone the page is in marked current. Each is a plain link, not a
+  next.js `Link`, since each is a separate zone and needs a full page load (decided 2026-11-26).
 - a pnpm workspace, with shared packages: `ui` (design), `auth`, `api-client` and `telemetry`.
 - keycloak sign in on the server. The ui is a confidential client: tokens stay on the server, in an
   encrypted session cookie, never in the browser.
