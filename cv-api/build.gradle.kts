@@ -23,7 +23,7 @@ repositories {
 subprojects {
     group = "com.skill2career"
 
-    // Spring boot 4.1.2 brings tomcat 11.0.27, which has two critical and six high vulnerabilities fixed
+    // Spring boot 4.2.0 brings tomcat 11.0.27, which has two critical and six high vulnerabilities fixed
     // in 11.0.29: CVE-2026-116561, -118028, -118233, -116600, -116830, -118436, -117517 and -106012. Set
     // here so both modules that import boot's bom, adapters and app, take it. Goes once boot brings
     // 11.0.29 or later. See decisions/cve.md.
@@ -47,6 +47,18 @@ subprojects {
 
     extensions.configure<org.jlleitschuh.gradle.ktlint.KtlintExtension> {
         version.set("1.8.0")
+    }
+
+    // Boot's bom sets the kotlin version on every configuration, ktlint's own among them, and ktlint 1.8.0
+    // fails on the 2.4 compiler with "Extensions storage is not registered". Give ktlint back the kotlin it
+    // asks for. Registered after the dependency management plugin's rule, so it wins. Goes once a ktlint
+    // release is built on kotlin 2.4.
+    pluginManager.withPlugin("io.spring.dependency-management") {
+        configurations.matching { it.name.startsWith("ktlint") }.configureEach {
+            resolutionStrategy.eachDependency {
+                if (requested.group == "org.jetbrains.kotlin") useVersion(requested.version!!)
+            }
+        }
     }
 
     extensions.configure<JacocoPluginExtension> {
