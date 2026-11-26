@@ -28,12 +28,13 @@ const config = (env: Record<string, string> = {}) =>
 
 const accessToken = `${btoa('{}')}.${btoa(JSON.stringify({ preferred_username: 'casey', roles: ['CANDIDATE'] }))}.sig`
 
+// Stands in for both the code and the refresh grant's result, which openid-client brands differently.
 const tokens = (refreshToken?: string) =>
   ({
     access_token: accessToken,
     refresh_token: refreshToken,
     expiresIn: () => 300,
-  }) as unknown as Awaited<ReturnType<typeof client.authorizationCodeGrant>>
+  }) as never
 
 const keycloak = {
   serverMetadata: () => ({ end_session_endpoint: 'https://id.example.com/logout' }),
