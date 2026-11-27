@@ -62,6 +62,8 @@ flowchart LR
   apiimg -.->|otlp| collector[otel collector] -.-> obs[jaeger, prometheus,<br/>loki, grafana]
 ```
 
+For the code itself, step by step, class by class, see [`docs/code-flow.md`](docs/code-flow.md).
+
 ### The ui
 
 Next.js multi zones. The **shell** owns `localhost:3000`, signs the user in with Keycloak and routes each
