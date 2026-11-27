@@ -99,21 +99,17 @@ describe('shell proxy', () => {
     expect(sessionProxy).not.toHaveBeenCalled()
   })
 
-  it('needs a sign in for home', async () => {
-    const home = request('/')
+  it.each(['/', '/auth/error'])(
+    'keeps the session fresh on its own pages, which do not need a sign in: %s',
+    async (path) => {
+      // Home shows the signed out the landing page, and the signed in their dashboard.
+      const page = request(path)
 
-    await proxy(home)
+      await proxy(page)
 
-    expect(sessionProxy).toHaveBeenCalledWith(home, undefined, { requireSignIn: true })
-  })
-
-  it('keeps the session fresh on its other pages, which do not need a sign in', async () => {
-    const error = request('/auth/error')
-
-    await proxy(error)
-
-    expect(sessionProxy).toHaveBeenCalledWith(error, undefined, { requireSignIn: false })
-  })
+      expect(sessionProxy).toHaveBeenCalledWith(page, undefined, { requireSignIn: false })
+    },
+  )
 
   it('runs for everything except static files', () => {
     expect(config.matcher).toEqual(['/((?!_next/static|_next/image|favicon.ico).*)'])

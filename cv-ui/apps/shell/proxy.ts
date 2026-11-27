@@ -18,7 +18,8 @@ export async function proxy(request: NextRequest) {
   // Each zone keeps its own session fresh, so a zone request is passed on untouched.
   if (zone) return NextResponse.rewrite(new URL(`${pathname}${search}`, zones[zone]()))
 
-  return sessionProxy(request, undefined, { requireSignIn: pathname === '/' })
+  // The shell's own pages are open to all: home is the landing page until the user signs in.
+  return sessionProxy(request, undefined, { requireSignIn: false })
 }
 
 export const config = {

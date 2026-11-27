@@ -2,32 +2,46 @@
 :root {
   --font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
-  --color-primary: #2952cc;
-  --color-primary-hover: #1f3fa3;
-  --color-primary-soft: #eaefff;
+  /* Indigo leads; coral is the accent, for what is new or needs the user. */
+  --color-primary: #4338ca;
+  --color-primary-hover: #3730a3;
+  --color-primary-soft: #eef0ff;
   --color-primary-text: #fff;
-  --color-background: #f7f8fa;
+  --color-accent: #e8553f;
+  --color-accent-soft: #fff0ec;
+  --color-background: #faf9f6;
   --color-surface: #fff;
-  --color-border: #e3e6eb;
-  --color-border-strong: #8a93a0;
-  --color-text: #111827;
-  --color-muted: #4b5563;
+  --color-surface-tint: #f4f3ff;
+  --color-border: #e7e5ef;
+  --color-border-strong: #8a8799;
+  --color-text: #16142b;
+  --color-muted: #555268;
   --color-error: #d4351c;
   --color-error-text: #a40e1c;
   --color-success: #00703c;
   --color-success-text: #005a30;
-  --color-focus: #2952cc;
+  --color-success-soft: #e7f5ee;
+  --color-focus: #4338ca;
+
+  --gradient-brand: linear-gradient(135deg, #4338ca 0%, #7c3aed 55%, #e8553f 100%);
+  --gradient-glow:
+    radial-gradient(60rem 30rem at 85% -10%, rgb(124 58 237 / 14%), transparent 60%),
+    radial-gradient(40rem 24rem at -10% 10%, rgb(67 56 202 / 10%), transparent 60%);
 
   --space-1: 0.5rem;
   --space-2: 1rem;
   --space-3: 1.5rem;
   --space-4: 2rem;
   --space-5: 3rem;
+  --space-6: 5rem;
 
-  --radius: 0.5rem;
-  --radius-lg: 0.75rem;
-  --shadow: 0 1px 2px rgb(16 24 40 / 6%), 0 1px 3px rgb(16 24 40 / 8%);
+  --radius: 0.625rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-pill: 999px;
+  --shadow: 0 1px 2px rgb(22 20 43 / 5%), 0 2px 6px rgb(22 20 43 / 6%);
+  --shadow-lg: 0 2px 4px rgb(22 20 43 / 4%), 0 12px 32px rgb(22 20 43 / 10%);
 
-  --content-width: 60rem;
+  --content-width: 68rem;
   --target-size: 2.75rem;
 }

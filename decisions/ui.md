@@ -17,6 +17,12 @@ The first ui is one vite page with no tests. It is rebuilt, as the digital-resol
 - every zone's header carries the main navigation: Home, then the areas the user's roles allow
   (`areasFor`, in `@cv/auth`), with the zone the page is in marked current. Each is a plain link, not a
   next.js `Link`, since each is a separate zone and needs a full page load (decided 2026-11-26).
+- home is open to all: signed out, it is the landing page (what it does, how it works, the three agents,
+  where a profile is sent, and sign in); signed in, the dashboard of the user's areas. Every zone still
+  needs a sign in (decided 2026-11-27).
+- the look: indigo with a coral accent, Inter up to 800 for headings, pill buttons, and shared classes in
+  `@cv/ui`'s base styles (`eyebrow`, `button-link`, `button-secondary`, `chip`, `card`), so a zone styles
+  a section label or a link that acts as a button the same way as every other (decided 2026-11-27).
 - a pnpm workspace, with shared packages: `ui` (design), `auth`, `api-client` and `telemetry`.
 - keycloak sign in on the server. The ui is a confidential client: tokens stay on the server, in an
   encrypted session cookie, never in the browser.
