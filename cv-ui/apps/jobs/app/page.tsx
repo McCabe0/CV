@@ -27,8 +27,9 @@ export default async function Page({ searchParams }: Props) {
 
   return (
     <>
+      <p className="eyebrow">Matched to your skills</p>
       <h1>Jobs for you</h1>
-      <p>
+      <p className={styles.intro}>
         Live jobs from companies&apos; own job boards that ask for your skills, the most skills
         first. Each links to the company&apos;s own site to apply.
       </p>
@@ -54,8 +55,11 @@ export default async function Page({ searchParams }: Props) {
 function FilterForm({ filter }: { filter: Filter }) {
   return (
     <form method="get" className={styles.filter} role="search" aria-label="Filter jobs">
-      <div>
+      <div className={styles.place}>
         <label htmlFor="location">Location</label>
+        <p id="location-hint" className={styles.hint}>
+          For example London, or UK
+        </p>
         <input
           id="location"
           name="location"
@@ -64,9 +68,6 @@ function FilterForm({ filter }: { filter: Filter }) {
           maxLength={LOCATION_MAX_LENGTH}
           aria-describedby="location-hint"
         />
-        <p id="location-hint" className={styles.count}>
-          For example London, or UK
-        </p>
       </div>
       <div className={styles.checkbox}>
         <input
@@ -107,20 +108,25 @@ function Job({ match }: { match: JobMatch }) {
   const where = [match.company, match.location, workplaceLabel(match.workplace)].filter(Boolean)
   return (
     <li className={styles.job}>
-      <h2>{match.title}</h2>
-      <p className={styles.meta}>{where.join(' · ')}</p>
-      <p className={styles.meta}>{skillsLine(match.matchedSkills)}</p>
+      {/* The company's initial, drawn by css from the attribute, so it is not read out. */}
+      <div className={styles.head} data-initial={match.company.charAt(0).toUpperCase()}>
+        <div>
+          <h2>{match.title}</h2>
+          <p className={styles.meta}>{where.join(' · ')}</p>
+        </div>
+      </div>
+      <p className={styles.skills}>{skillsLine(match.matchedSkills)}</p>
       <WhyItFits
         ask={askWhyItFits.bind(null, match.id)}
         read={readWhyItFits.bind(null, match.id)}
       />
       <div className={styles.actions}>
-        <a href={match.applyUrl} target="_blank" rel="noopener noreferrer">
+        <a href={match.applyUrl} target="_blank" rel="noopener noreferrer" className="button-link">
           Apply on {match.company}&apos;s site
           <span className="visually-hidden"> (opens in a new tab)</span>
         </a>
         {/* The CV area is another zone, so a plain link, which starts the CV there. */}
-        <a href={`/cv?job=${match.id}`}>
+        <a href={`/cv?job=${match.id}`} className="button-secondary">
           Write a CV for this job<span className="visually-hidden">: {match.title}</span>
         </a>
       </div>

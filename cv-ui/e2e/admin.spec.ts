@@ -79,6 +79,7 @@ test('an admin is told plainly when a board does not exist', async ({ page }) =>
 
 test('home leads an admin to the companies', async ({ page }) => {
   await page.goto('/')
+  await page.getByRole('link', { name: 'Sign in' }).click()
   await signInOnKeycloak(page, 'admin')
 
   await page

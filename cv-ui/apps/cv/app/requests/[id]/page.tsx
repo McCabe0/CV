@@ -6,6 +6,7 @@ import { answerQuestions, startCv } from '../../actions'
 import { BASE_PATH } from '../../basePath'
 import { CvDocument } from '../../CvDocument'
 import { CvProgress } from '../../CvProgress'
+import { CvSteps } from '../../CvSteps'
 import type { CvRequest } from '../../cvRequest'
 import { AnswerForm, StartCvForm } from '../../forms'
 import { Rounds } from '../../Rounds'
@@ -37,6 +38,7 @@ export default async function Page({ params }: Props) {
       return (
         <>
           <h1>A few questions</h1>
+          <CvSteps status={request.status} />
           <p>
             Your answers make your CV stronger, and are saved to your profile for your next CV. Skip
             any you would rather not answer.
@@ -51,6 +53,7 @@ export default async function Page({ params }: Props) {
       return (
         <>
           <h1>Your CV</h1>
+          <CvSteps status={request.status} />
           <CvDocument cv={request.cv!} person={person ?? { name: user.name }} />
           <Rounds rounds={request.rounds} />
         </>

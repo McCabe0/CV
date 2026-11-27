@@ -19,8 +19,25 @@ test('a signed out user is sent to sign in, then back to the page they asked for
   await expectNoHorizontalScroll(page)
 })
 
+test('home shows the signed out what it does, and signs them in', async ({ page }) => {
+  await page.goto('/')
+
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+    'A CV written for you, and the jobs it fits',
+  )
+  await expectAccessible(page)
+  await expectNoHorizontalScroll(page)
+
+  await page.getByRole('link', { name: 'Sign in' }).click()
+  await signInOnKeycloak(page, 'candidate')
+
+  await expect(page).toHaveURL('/')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Welcome, Casey Candidate')
+})
+
 test('home lists what the user can use, and leads to it', async ({ page }) => {
   await page.goto('/')
+  await page.getByRole('link', { name: 'Sign in' }).click()
   await signInOnKeycloak(page, 'candidate')
 
   await expect(page).toHaveURL('/')

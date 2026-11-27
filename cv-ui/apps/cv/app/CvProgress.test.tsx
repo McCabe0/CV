@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import { axe } from 'jest-axe'
 import { useRouter } from 'next/navigation'
 import { CvProgress } from './CvProgress'
@@ -54,8 +54,9 @@ describe('CvProgress', () => {
     expect(screen.getByRole('status')).toHaveTextContent(
       'The critic scored draft 1 at 64 out of 100.',
     )
-    expect(screen.getByRole('listitem')).toHaveTextContent('Draft 1: 64 out of 100')
-    expect(screen.getByRole('listitem')).toHaveTextContent('Add numbers to the bullets')
+    const rounds = within(screen.getByRole('region', { name: 'The writer and the critic' }))
+    expect(rounds.getByRole('listitem')).toHaveTextContent('Draft 1: 64 out of 100')
+    expect(rounds.getByRole('listitem')).toHaveTextContent('Add numbers to the bullets')
     expect(refresh).not.toHaveBeenCalled()
   })
 
@@ -70,6 +71,19 @@ describe('CvProgress', () => {
       expect(FakeEventSource.last.closed).toBe(true)
     },
   )
+
+  it('moves the progress steps on as the request does', () => {
+    render(<CvProgress initial={cvRequest({ status: 'REQUESTED' })} />)
+    const steps = screen.getByRole('list', { name: "Your CV's progress" })
+    expect(within(steps).getByText('Interview').closest('li')).toHaveAttribute(
+      'aria-current',
+      'step',
+    )
+
+    FakeEventSource.last.emit(cvRequest({ status: 'WRITING' }))
+
+    expect(within(steps).getByText('Writing').closest('li')).toHaveAttribute('aria-current', 'step')
+  })
 
   it('stops following when the page is left', () => {
     const { unmount } = render(<CvProgress initial={cvRequest({ status: 'WRITING' })} />)

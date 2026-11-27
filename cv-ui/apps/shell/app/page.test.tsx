@@ -36,19 +36,58 @@ describe('shell home page', () => {
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
   })
 
-  it('offers nothing with no session', async () => {
+  it('says what it does, and offers no areas, with no session', async () => {
     jest.mocked(getSession).mockResolvedValue(null)
     await renderHome()
 
-    expect(screen.getByRole('heading', { level: 1, name: 'Skill2Career' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'A CV written for you, and the jobs it fits' }),
+    ).toBeInTheDocument()
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
   })
 
-  it('offers sign in with no session', async () => {
+  it('offers sign in with no session, at the top and the end', async () => {
     jest.mocked(getSession).mockResolvedValue(null)
     await renderHome()
 
     expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/auth/login')
+    expect(screen.getByRole('link', { name: 'Get started' })).toHaveAttribute('href', '/auth/login')
+  })
+
+  it('shows how it works, in order, with no session', async () => {
+    jest.mocked(getSession).mockResolvedValue(null)
+    await renderHome()
+
+    const section = within(screen.getByRole('region', { name: 'How it works' }))
+    const steps = section.getAllByRole('listitem')
+    expect(steps).toHaveLength(3)
+    expect(steps[0]).toHaveTextContent('Tell us about you')
+    expect(steps[1]).toHaveTextContent('Your CV team gets to work')
+    expect(steps[2]).toHaveTextContent('See the jobs that fit')
+  })
+
+  it('introduces the three agents with no session', async () => {
+    jest.mocked(getSession).mockResolvedValue(null)
+    await renderHome()
+
+    const team = within(screen.getByRole('region', { name: 'Meet your CV team' }))
+    for (const agent of ['The interviewer', 'The writer', 'The critic']) {
+      expect(team.getByRole('heading', { level: 3, name: agent })).toBeInTheDocument()
+    }
+  })
+
+  it('says where a profile is sent, with no session', async () => {
+    jest.mocked(getSession).mockResolvedValue(null)
+    await renderHome()
+
+    expect(screen.getByText(/sent to Google's Gemini/)).toBeInTheDocument()
+  })
+
+  it('has no detectable accessibility violations with no session', async () => {
+    jest.mocked(getSession).mockResolvedValue(null)
+    const { container } = await renderHome()
+
+    expect(await axe(container)).toHaveNoViolations()
   })
 
   it('says what each area is for', async () => {

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { BASE_PATH } from './basePath'
 import { statusLine, type CvRequest } from './cvRequest'
+import { CvSteps } from './CvSteps'
 import { Rounds } from './Rounds'
 
 /**
@@ -30,6 +31,7 @@ export function CvProgress({ initial }: { initial: CvRequest }) {
 
   return (
     <>
+      <CvSteps status={request.status} />
       <p role="status">{statusLine(request)}</p>
       <Rounds rounds={request.rounds} />
     </>
